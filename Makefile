@@ -31,6 +31,12 @@ build:
 run:
 	docker run --net=$(network) --net-alias=$(alias) -d  -p 8091:3000 -p 8454:3443 --name=$(container) $(image)
 
+run-debug-no-net:
+	docker run -e "DEBUG=req,app,login,logout,resources,knora" -d  -p 8091:3000 -p 8454:3443 --name=$(container) $(image)
+
+run-demo:
+	docker run -e "NODE_ENV=demo" -d  -p 8091:3000 -p 8454:3443 --name=$(container) $(image)
+
 start:
 	docker start $(container)
 	
