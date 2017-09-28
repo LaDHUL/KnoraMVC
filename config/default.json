@@ -1,0 +1,21 @@
+{
+  "knora" : {
+    "server": {
+      "protocol": "http",
+      "host": "localhost:3333",
+      "version": "v1",
+      "search": "search/?searchtype=extended&show_nrows=25&start_at=0"
+    },
+    "statusCode": {
+      "ok": 0,
+      "bad_credentials": 2,
+      //"not_found": 3,
+      "not_found": 9,
+      "other": 999
+    },
+    "project" : {
+      "atelier-fabula" : "atelier-fabula",
+      "anything" : "0001"
+    }
+  }
+}
