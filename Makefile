@@ -45,3 +45,9 @@ attach:
 
 logs:
 	docker logs $(container)
+
+local-run:
+	./node_modules/.bin/nodemon ./bin/www
+
+local-debug:
+	DEBUG=req,app,login,logout,resources,knora ./node_modules/.bin/nodemon ./bin/www
