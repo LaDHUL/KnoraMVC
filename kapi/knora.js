@@ -41,6 +41,10 @@ Knora.prototype.getUrl = function (command, project, iri) {
 	return this.baseUrl + command + "/" + qs.escape("http://rdfh.ch/" + project + "/" + iri);
 };
 
+Knora.prototype.shortIri = function (url) {
+	return url.substr(url.lastIndexOf('/') + 1);
+};
+
 /**
  * Helper method to set Authentication into cookies
  *
@@ -381,8 +385,8 @@ Knora.prototype.knora_request = function (options, model, data) {
 				toReturn.found = [];
 				_.forEach(parsedBody.subjects, function(element) {
 					toReturn.found.push({
-						id : element.obj_id,
-						label : element.value
+						id : knora.shortIri(element.obj_id),
+						label : element.value.pop()
 					})
 				});
 
