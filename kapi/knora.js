@@ -82,6 +82,10 @@ Knora.prototype.knora_restypes = function (model) {
 	let options = {method: 'GET'};
 	let knora = this;
 
+	if (!model) {
+		return Promise.resolve(model);
+	}
+
 	return new Promise(function (fullfill, reject) {
 		// check the cache : if we know the resource, return
 		logdebug('restype for model: %o', model);
@@ -203,7 +207,9 @@ Knora.prototype.knora_request = function (options, model, data) {
 		if (options.method === 'POST') {
 			options.body = {};
 			options.body.properties = {};
-			options.body.restype_id = model.id;
+			if (model) {
+				options.body.restype_id = model.id;
+			}
 
 			/* exemple :
 			input data:
