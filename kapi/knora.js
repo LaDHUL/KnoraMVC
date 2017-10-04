@@ -80,6 +80,7 @@ Knora.prototype.knora_restypes = function (model) {
 
 	return new Promise(function (fullfill, reject) {
 		// check the cache : if we know the resource, return
+		logdebug('restype for model: %o', model);
 		if (knora.resource_types[model.id]) {
 			fullfill(knora.resource_types[model.id]);
 			return;
@@ -89,6 +90,8 @@ Knora.prototype.knora_restypes = function (model) {
 		options.url = knora.baseUrl + 'resourcetypes/' + qs.escape(model.id);
 		// get the resource type
 		logdebug('restype: %o', options);
+		// TODO : split the callback function of the request per operations,
+		//        namely; get, create, search
 		request(options, function (error, response, body) {
 			if (error) {
 				// what kind of error is that?
@@ -293,8 +296,8 @@ Knora.prototype.knora_request = function (options, model, data) {
 
 
 			// is the response a json object?
+			let parsedBody = body;
 			try {
-				let parsedBody = body;
 				if (typeof body === 'string' || body instanceof String) {
 					logdebug("typeof body: %o", typeof body);
 					parsedBody = JSON.parse(body);
@@ -315,10 +318,10 @@ Knora.prototype.knora_request = function (options, model, data) {
 				}
 				if (parsedBody.props) {
 					toReturn.props = parsedBody.props;
-				//} else {
-				//	if (parsedBody.results) {
-				//		toReturn.props = parsedBody.results;
-				//	}
+					//} else {
+					//	if (parsedBody.results) {
+					//		toReturn.props = parsedBody.results;
+					//	}
 				}
 				if (toReturn.status !== knora.configKnora.statusCode.ok) {
 					logdebug("filling on status: %o", toReturn.status);
@@ -332,13 +335,57 @@ Knora.prototype.knora_request = function (options, model, data) {
 					fulfill(toReturn);
 					return;
 				}
+
 			}
-			catch
-				(e) {
+			catch (e) {
 				// the result is not a json object
 				logdebug("filling on exception (no json): %o, %o", e, body);
 				toReturn.status = knora.configKnora.statusCode.other;
 				toReturn.message = body;
+				fulfill(toReturn);
+				return;
+			}
+
+			// search
+			if (parsedBody.subjects) {
+				/*
+				{
+			"subjects": [{
+				"iconlabel": "Article Fabula",
+				"valuetype_id": ["http://www.w3.org/2000/01/rdf-schema#label"],
+				"preview_nx": 32,
+				"icontitle": "Article Fabula",
+				"preview_ny": 32,
+				"obj_id": "http://rdfh.ch/atelier-fabula/1m0DgvydTUWJLKFk435PHg",
+				"iconsrc": null,
+				"preview_path": null,
+				"rights": 8,
+				"value": ["sdf"],
+				"valuelabel": ["Label"]
+			}, {
+				"iconlabel": "Article Fabula",
+				"valuetype_id": ["http://www.w3.org/2000/01/rdf-schema#label"],
+				"preview_nx": 32,
+				"icontitle": "Article Fabula",
+				"preview_ny": 32,
+				"obj_id": "http://rdfh.ch/atelier-fabula/3hIi3CxjQpat-8UdRjkGuw",
+				"iconsrc": null,
+				"preview_path": null,
+				"rights": 8,
+				"value": ["Le travail de la narration dramatique, par Danielle Chaperon"],
+				"valuelabel": ["Label"]
+			}, {
+				*/
+
+				// walk through the results
+				toReturn.found = [];
+				_.forEach(parsedBody.subjects, function(element) {
+					toReturn.found.push({
+						id : element.obj_id,
+						label : element.value
+					})
+				});
+
 				fulfill(toReturn);
 				return;
 			}
@@ -558,6 +605,22 @@ Knora.prototype.search = function (search, req, res) {
 
 	// forward the request to Knora
 	this.api_request(options, req, res, undefined);
+};
+
+Knora.prototype.api_search_by_type = function (project, model, req, res) {
+	// http://localhost:3333/v1/search/?searchtype=extended&show_nrows=25&start_at=0&filter_by_restype=http://www.knora.org/ontology/0108#Article&filter_by_project=http://data.knora.org/projects/0108
+	let options = {
+		method: 'GET',
+	};
+	options.url = this.baseUrl + "search/?searchtype=extended&show_nrows=5&start_at=0";
+	if (model) {
+		options.url += "&filter_by_restype=" + qs.escape(model.id);
+	}
+	if (project) {
+		options.url += "&filter_by_project=" + qs.escape(project);
+	}
+
+	this.api_request(options, req, res, model);
 };
 
 module.exports = Knora;
