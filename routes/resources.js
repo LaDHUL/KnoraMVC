@@ -35,14 +35,31 @@ router.get('/:project/:model/:iri', function (req, res, next) {
 });
 
 router.post('/:project/:model', function(req, res, next) {
-	var url = knora.baseUrl +'resources';
+    var url = knora.baseUrl +'resources';
+    // TODO: set the project
+    var options = {
+        method: 'POST',
+        url: url,
+    };
+
+    logdebug('post data: %o', req.body);
+    let model = require('./../models/'+ req.params.project +'/'+ req.params.model);
+    logdebug('sending resource request with options %o', options);
+    logdebug('models: %o', model);
+    logdebug('model: %o', model.model[req.params.model]);
+
+    knora.api_request(options, req, res, model.model[req.params.model], next);
+});
+
+router.put('/:project/:model/:iri', function(req, res, next) {
+    var url = knora.getUrl("resources", req.params.project, req.params.iri);
 	// TODO: set the project
 	var options = {
-		method: 'POST',
+		method: 'PUT',
 		url: url,
 	};
 
-	logdebug('post data: %o', req.body);
+	logdebug('put data: %o', req.body);
 	let model = require('./../models/'+ req.params.project +'/'+ req.params.model);
 	logdebug('sending resource request with options %o', options);
 	logdebug('models: %o', model);

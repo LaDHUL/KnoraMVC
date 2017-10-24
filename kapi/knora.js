@@ -70,6 +70,7 @@ Knora.prototype.fixCookies = function (options, req) {
 	if (cookies) {
 		_.set(options, 'headers.cookie', cookies);
 	}
+	return cookies;
 };
 
 /**
@@ -109,7 +110,7 @@ Knora.prototype.knora_restypes = function (model) {
 				return;
 			}
 
-			logdebug('error: %o', response.statusCode);
+			logdebug('response: %o', response.statusCode);
 			if (response.statusCode !== HttpStatus.OK) {
 				reject(Error(body));
 				return;
@@ -194,7 +195,7 @@ Knora.prototype.knora_restypes = function (model) {
  * options : options to pass over to request
  * model : model description of the object in output
  */
-Knora.prototype.knora_request = function (options, model, data) {
+Knora.prototype.knora_request = function (options, model, data, previousResult) {
 	let knora = this;
 
 	// make this a promise to be able to chain them
@@ -245,10 +246,10 @@ Knora.prototype.knora_request = function (options, model, data) {
 				// propertyName : "http://www.knora.org/ontology/0108#hasFamilyName"
 				let propertyName = model.properties[resourceKey];
 				// find the data type : "text"
-				//logdebug("model.id: %o, resourceKey: %o, propertyName: %o", model.id, resourceKey, propertyName);
+				logdebug("model.id: %o, resourceKey: %o, propertyName: %o", model.id, resourceKey, propertyName);
 				//logdebug("resource_types: %o", knora.resource_types);
 				//logdebug("resource_type model: %o", knora.resource_types[model.id]);
-				//logdebug("resource_type model prop: %o", knora.resource_types[model.id][propertyName]);
+				logdebug("resource_type model prop: %o", knora.resource_types[model.id][propertyName]);
 				let propertyType = knora.resource_types[model.id][propertyName].gui_name;
 				let outValues = [];
 				//logdebug("resource_type proptype: %o", propertyType);
@@ -259,13 +260,99 @@ Knora.prototype.knora_request = function (options, model, data) {
 						});
 					//case: 'richtext':
 					//case: 'searchbox':
-					//
 				}
 				options.body.properties[propertyName] = outValues;
 			});
 
 			// TODO: add a label field
 			options.body.label = data.label;
+			// TODO: on login, cache the project id with the auth tocken
+			options.body.project_id = "http://data.knora.org/projects/0108";
+
+			options.json = true;
+		}
+
+
+		// for PUT, populate data
+		if (options.method === 'PUT') {
+			options.body = {};
+			options.body.properties = {};
+			if (model) {
+				options.body.restype_id = model.id;
+			}
+
+			/* exemple :
+			input data:
+			{ "familyName": [ "loic" ] }
+
+			reworked url:
+			/v1/values/${IRI}/values/${VALUE}
+			/v1/values/http%3A%2F%2Frdfh.ch%2Fatelier-fabula%2FfFpLBN-bQUWqOsaaspg0SA%2Fvalues%2Fe691-kFkTISeGkz5OsCS2
+			output data:
+			options.body = {
+				"richtext_value": {"utf8str":"lo\xefc"},
+				"project_id":"http://data.knora.org/projects/0108"}
+			};
+			*/
+
+			logdebug("data: %o", data);
+			_.forEach(data, function (values, resourceKey) {
+				if (values.length === 0) {
+					return;
+				}
+
+				// resourceKey : "familyName", match with model
+				// propertyName : "http://www.knora.org/ontology/0108#hasFamilyName"
+				let propertyName = model.properties[resourceKey];
+				// find the value's UUID
+				logdebug("looking for value UUID in %o", previousResult.props);
+				let property = previousResult.props[propertyName];
+                logdebug("found value %o", property);
+                // TODO: if we didn't find it?
+				/*
+				{ regular_property: 1,
+				  value_restype: [ null ],
+				  guiorder: 1,
+				  value_firstprops: [ null ],
+				  is_annotation: '0',
+				  valuetype_id: 'http://www.knora.org/ontology/knora-base#TextValue',
+				  label: 'Nom',
+				  value_iconsrcs: [ null ],
+				  guielement: 'text',
+				  attributes: 'size=80;maxlength=255',
+				  occurrence: '1',
+				  value_ids: [ 'http://rdfh.ch/atelier-fabula/U_PysjdURDWa70sQS7TmoQ/values/r5c4tnn3QJ6TDaz4Nc9JNQ' ],
+				  value_rights: [ 8 ],
+				  pid: 'http://www.knora.org/ontology/0108#hasFamilyName',
+				  values: [ { utf8str: 'loic' } ],
+				  comments: [ null ]
+				}
+			    */
+
+				// working out the url
+                options.url = knora.getUrlIri("values", property["value_ids"][0]);
+                // TODO: in case of several values
+
+				// translating the value
+				// { "familyName": [ "loic" ] } -> "richtext_value": {"utf8str":"lo\xefc"},
+
+				// find the data type : "text"
+				logdebug("resource_type model prop: %o", knora.resource_types[model.id][propertyName]);
+				let propertyType = knora.resource_types[model.id][propertyName].gui_name;
+				let outValues = {};
+				//logdebug("resource_type proptype: %o", propertyType);
+				switch (propertyType) {
+					case 'text':
+						_.forEach(values, function (value) {
+							outValues.richtext_value =  { "utf8str": value};
+						});
+					//case: 'richtext':
+					//case: 'searchbox':
+				}
+				logdebug("filled out values: %o", outValues);
+				options.body = outValues;
+			});
+
 			// TODO: on login, cache the project id with the auth tocken
 			options.body.project_id = "http://data.knora.org/projects/0108";
 
@@ -339,13 +426,20 @@ Knora.prototype.knora_request = function (options, model, data) {
 					fulfill(toReturn);
 					return;
 				}
+				// result of a post
 				if (parsedBody.res_id) {
 					logdebug("filling on res_id: %o", parsedBody.res_id);
 					toReturn.res_id = parsedBody.res_id;
 					fulfill(toReturn);
 					return;
 				}
-
+				// result of a put
+				if (parsedBody.id) {
+					logdebug("filling on (value) id: %o", parsedBody.id);
+					toReturn.id = parsedBody.id;
+					fulfill(toReturn);
+					return;
+				}
 			}
 			catch (e) {
 				// the result is not a json object
@@ -523,15 +617,40 @@ Knora.prototype.api_request = function (options, req, res, model) {
 
 	// make sure that we know the model's type
 	this.knora_restypes(model)
+		// fix the cookies
 	// then proceed with the request
 		.then(function (result) {
-			logdebug("types known: %o", result);
+            logdebug("types known: %o", result);
 
-			knora.fixCookies(options, req);
+            return Promise.resolve(knora.fixCookies(options, req));
+        })
+		// if this is a put request, query the resource to modify first
+		.then(function(result) {
+            logdebug('fixed cookies: %o', result);
 
-			logdebug('sending request, body: %o', req.body);
+            // if this is not a PUT request, just move on
+            if (options.method !== 'PUT') {
+                logdebug('flow, no put, going on with: %s', options.method);
+                return Promise.resolve(result);
+            }
 
-			return knora.knora_request(options, model, req.body);
+            // else we have an update request, we have to query the resource again first
+            options.method = 'GET';
+            options.next = 'PUT';
+
+            logdebug('flow, put request, going on first with: %s', options.method);
+            return knora.knora_request(options, model, req.body);
+        })
+		.then(function(result) {
+			if (options.next) {
+                options.method = options.next;
+                delete options.next;
+                logdebug('flow, after GET, now procede with the put request: %s', options.method);
+			} else {
+                logdebug('sending request, body: %o', req.body);
+			}
+
+			return knora.knora_request(options, model, req.body, result);
 		})
 		// then return the result
 		.then(function (result) {
