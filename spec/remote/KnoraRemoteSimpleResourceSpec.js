@@ -68,9 +68,8 @@ describe("resource: create and access", function() {
                 }
                 expect(response.status).toBeDefined();
                 expect(response.status).toEqual(0);
-                expect(response.res_id).toBeDefined();
-                expect(response.res_id).toMatch('http://rdfh.ch/atelier-fabula/');
-                uuid = response.res_id.substr(response.res_id.lastIndexOf('/') + 1);
+                expect(response.id).toBeDefined();
+                uuid = response.id;
                 done();
             });
     });

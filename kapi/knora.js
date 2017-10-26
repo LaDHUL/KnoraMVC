@@ -509,7 +509,7 @@ Knora.prototype.knora_request = function (options, model, data, previousResult) 
 				// result of a post
 				if (parsedBody.res_id) {
 					logdebug("filling on res_id: %o", parsedBody.res_id);
-					toReturn.res_id = parsedBody.res_id;
+					toReturn.id = knora.shortIri(parsedBody.res_id);
 					fulfill(toReturn);
 					return;
 				}
