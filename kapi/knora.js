@@ -45,6 +45,10 @@ Knora.prototype.shortIri = function (url) {
 	return url.substr(url.lastIndexOf('/') + 1);
 };
 
+Knora.prototype.longIri = function (project, iri) {
+	return "http://rdfh.ch/"+ project + "/" + iri;
+}
+
 /**
  * Helper method to set Authentication into cookies
  *
@@ -245,12 +249,40 @@ Knora.prototype.knora_request = function (options, model, data, previousResult) 
 				// resourceKey : "familyName", match with model
 				// propertyName : "http://www.knora.org/ontology/0108#hasFamilyName"
 				let propertyName = model.properties[resourceKey];
-				// find the data type : "text"
-				logdebug("model.id: %o, resourceKey: %o, propertyName: %o", model.id, resourceKey, propertyName);
-				//logdebug("resource_types: %o", knora.resource_types);
-				//logdebug("resource_type model: %o", knora.resource_types[model.id]);
-				logdebug("resource_type model prop: %o", knora.resource_types[model.id][propertyName]);
-				let propertyType = knora.resource_types[model.id][propertyName].gui_name;
+
+                logdebug("model.id: %o, resourceKey: %o, propertyName: %o", model.id, resourceKey, propertyName);
+                //logdebug("resource_types: %o", knora.resource_types);
+                //logdebug("resource_type model: %o", knora.resource_types[model.id]);
+                logdebug("resource_type model prop: %o", knora.resource_types[model.id][propertyName]);
+
+                // find the data type : "text"
+
+				let propertyType;
+                if (propertyName.constructor === Array) {
+					/*
+                	this is a link to another resource
+
+					[ 'http://www.knora.org/ontology/0108#notionHasAuthor',
+					  { id: 'http://www.knora.org/ontology/0108#Author',
+					    properties: { familyName: 'http://www.knora.org/ontology/0108#hasFamilyName',
+					                  givenName: 'http://www.knora.org/ontology/0108#hasGivenName',
+					                  biography: 'http://www.knora.org/ontology/0108#hasBiography',
+					                  email: 'http://www.knora.org/ontology/0108#hasMbox',
+					                  reference: 'http://www.knora.org/ontology/0108#authorHasReferences'
+					                }
+					   }
+					 ]
+
+					 for links, it is not possible to guess if it is a new value, an edited value, an existing value
+					 we have to let the client do that work
+					 so we expect an id here
+					 */
+					propertyName = propertyName[0];
+					propertyType = "link";
+				} else {
+                    propertyType = knora.resource_types[model.id][propertyName].gui_name;
+				}
+
 				let outValues = [];
 				//logdebug("resource_type proptype: %o", propertyType);
 				switch (propertyType) {
@@ -258,8 +290,28 @@ Knora.prototype.knora_request = function (options, model, data, previousResult) 
 						_.forEach(values, function (value) {
 							outValues.push({"richtext_value": {"utf8str": value}});
 						});
-					//case: 'richtext':
-					//case: 'searchbox':
+						break;
+
+					case 'link':
+                        _.forEach(values, function (value) {
+                            outValues.push({"link_value": knora.longIri("atelier-fabula", value)});
+                        });
+                        break;
+
+					case 'richtext':
+                        _.forEach(values, function (value) {
+                        	// xml-ify the value
+							let xmlified = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"+ value;
+							let request = {"richtext_value": {
+                                "xml": xmlified,
+                                "mapping_id": "http://data.knora.org/projects/standoff/mappings/StandardMapping"
+                            }};
+							logdebug("richtext xmlified: %o", request);
+                            outValues.push(request);
+
+                        });
+                        break;
+
 				}
 				options.body.properties[propertyName] = outValues;
 			});
@@ -304,6 +356,15 @@ Knora.prototype.knora_request = function (options, model, data, previousResult) 
 				// resourceKey : "familyName", match with model
 				// propertyName : "http://www.knora.org/ontology/0108#hasFamilyName"
 				let propertyName = model.properties[resourceKey];
+				let propertyType;
+                if (propertyName.constructor === Array) {
+                    // link data
+                    propertyName = propertyName[0];
+                    propertyType = "link";
+                } else {
+                    propertyType = knora.resource_types[model.id][propertyName].gui_name;
+				}
+
 				// find the value's UUID
 				logdebug("looking for value UUID in %o", previousResult.props);
 				let property = previousResult.props[propertyName];
@@ -338,17 +399,36 @@ Knora.prototype.knora_request = function (options, model, data, previousResult) 
 
 				// find the data type : "text"
 				logdebug("resource_type model prop: %o", knora.resource_types[model.id][propertyName]);
-				let propertyType = knora.resource_types[model.id][propertyName].gui_name;
 				let outValues = {};
 				//logdebug("resource_type proptype: %o", propertyType);
 				switch (propertyType) {
-					case 'text':
-						_.forEach(values, function (value) {
-							outValues.richtext_value =  { "utf8str": value};
-						});
-					//case: 'richtext':
-					//case: 'searchbox':
-				}
+                    case 'text':
+                        _.forEach(values, function (value) {
+                            outValues.richtext_value = {"utf8str": value};
+                        });
+                        break;
+
+                    case 'link':
+                        _.forEach(values, function (value) {
+                            outValues.link_value = knora.longIri("atelier-fabula", value);
+                        });
+                        break;
+
+                    case 'richtext':
+                        _.forEach(values, function (value) {
+                            // xml-ify the value
+                            let xmlified = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"+ value;
+                            let request = {
+                                "xml": xmlified,
+                                "mapping_id": "http://data.knora.org/projects/standoff/mappings/StandardMapping"
+                            };
+                            logdebug("richtext xmlified: %o", request);
+                            outValues.richtext_value = request;
+
+                        });
+                        break;
+
+                }
 				logdebug("filled out values: %o", outValues);
 				options.body = outValues;
 			});
@@ -543,7 +623,7 @@ Knora.prototype.knora_request = function (options, model, data, previousResult) 
 								if (toReturn.props[value].guielement === "text") {
 									toReturn.resource[key].push(item.utf8str);
 								} else if (toReturn.props[value].guielement === "richtext") {
-									toReturn.resource[key].push(item.xml);
+									toReturn.resource[key].push(item.xml.substr(item.xml.indexOf('>')+2));
 								}
 							});
 							break;
