@@ -20,7 +20,7 @@ module.exports = {
 				'author': ['http://www.knora.org/ontology/0108#articleHasAuthor', author.model.author],
 //            'affiliation' : [ 'http://www.knora.org/ontology/0108#articleHasAffiliation', affiliation.model.affiliation ],
 				'introduction': 'http://www.knora.org/ontology/0108#hasIntroduction',
-//            'notions' : [ 'http://www.knora.org/ontology/0108#articleHasTopicNotion', notion.model.notion ],
+                'notions' : [ 'http://www.knora.org/ontology/0108#articleHasTopicNotion', notion.model.notion ],
 //            'keywords' : [ 'http://www.knora.org/ontology/0108#hasTopicKeyword', keyword.model.keyword ],
 				'firstpublication': 'http://www.knora.org/ontology/0108#articleHasPublicationDateOriginal',
 				'onlinepublication': 'http://www.knora.org/ontology/0108#articleHasPublicationDateOnline',
