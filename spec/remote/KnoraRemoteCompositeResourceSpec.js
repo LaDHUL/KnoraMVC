@@ -150,9 +150,11 @@ describe("resource: create and access", function() {
                 } catch (e) {
                     fail('returned object was not a json object: '+ data);
                 }
+                expect(response.resource.id).toEqual(source_id);
                 expect(response.resource.name.pop()).toEqual(notionName);
                 expect(response.resource.definition.pop()).toEqual(notionDefinition);
                 let author = response.resource.author.pop();
+                expect(author.id).toEqual(target1_id);
                 expect(author.givenName.pop()).toEqual('Titus');
                 expect(author.familyName.pop()).toEqual('Livius');
                 done();

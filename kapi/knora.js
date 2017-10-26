@@ -593,6 +593,8 @@ Knora.prototype.knora_request = function (options, model, data, previousResult) 
 			logdebugReq("props: %o", toReturn.props);
 
 			toReturn.resource = {};
+            toReturn.resource.id = knora.shortIri(toReturn.resdata.res_id);
+
 			// iterate over the properties of the model
 			_.forEach(model.properties, function (value, key) {
 				// key   : title

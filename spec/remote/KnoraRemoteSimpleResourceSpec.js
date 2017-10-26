@@ -101,6 +101,7 @@ describe("resource: create and access", function() {
                 } catch (e) {
                     fail('returned object was not a json object: '+ data);
                 }
+                expect(response.resource.id).toEqual(uuid);
                 expect(response.resource.familyName.pop()).toEqual('loic');
                 expect(response.resource.givenName.pop()).toEqual('jaouen');
                 done();
@@ -201,6 +202,7 @@ describe("resource: create and access", function() {
                 } catch (e) {
                     fail('returned object was not a json object: '+ data);
                 }
+                expect(response.resource.id).toEqual(uuid);
                 expect(response.resource.familyName.pop()).toEqual('Jaouen');
                 expect(response.resource.givenName.pop()).toEqual('Loïc');
                 done();
