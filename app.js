@@ -10,6 +10,7 @@ const HttpStatus = require('http-status-codes');
 /*******************************************************************************
  * include the routes here
  ******************************************************************************/
+const search = require('./routes/search');
 const resources = require('./routes/resources');
 const session = require('./routes/session');
 
@@ -32,6 +33,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 /*******************************************************************************
  * declare the routes here
  ******************************************************************************/
+app.use('/search', search);
 app.use('/resources', resources);
 app.use('/session', session);
 

@@ -20,6 +20,7 @@ function Knora() {
 		this.configKnora.server.protocol + '://' +
 		this.configKnora.server.host + "/" +
 		this.configKnora.server.version + "/";
+	this.resource_types = {};
 }
 
 /**
@@ -37,8 +38,16 @@ Knora.prototype.getUrlIri = function (command, iri) {
 };
 
 Knora.prototype.getUrl = function (command, project, iri) {
-	return this.baseUrl + command + "/" + qs.escape( "http://rdfh.ch/"+ project +"/" + iri);
+	return this.baseUrl + command + "/" + qs.escape("http://rdfh.ch/" + project + "/" + iri);
 };
+
+Knora.prototype.shortIri = function (url) {
+	return url.substr(url.lastIndexOf('/') + 1);
+};
+
+Knora.prototype.longIri = function (project, iri) {
+	return "http://rdfh.ch/"+ project + "/" + iri;
+}
 
 /**
  * Helper method to set Authentication into cookies
@@ -49,7 +58,7 @@ Knora.prototype.getUrl = function (command, project, iri) {
 Knora.prototype.fixCookies = function (options, req) {
 	// if auth is requested fill it in the options
 	// read `express` request header 'Authorization'
-	logdebug("req: %o", req);
+	logdebugReq("req: %o", req);
 	let auth = req.get('Authorization');
 	if (auth) {
 		_.set(options, 'headers.authorization', auth);
@@ -65,6 +74,114 @@ Knora.prototype.fixCookies = function (options, req) {
 	if (cookies) {
 		_.set(options, 'headers.cookie', cookies);
 	}
+	return cookies;
+};
+
+/**
+ * get the resource informations
+ *
+ * input: model
+ * @param model
+ */
+Knora.prototype.knora_restypes = function (model) {
+	let options = {method: 'GET'};
+	let knora = this;
+
+	if (!model) {
+		return Promise.resolve(model);
+	}
+
+	return new Promise(function (fullfill, reject) {
+		// check the cache : if we know the resource, return
+		logdebug('restype for model: %o', model);
+		if (knora.resource_types[model.id]) {
+			fullfill(knora.resource_types[model.id]);
+			return;
+		}
+
+		// else request the information
+		options.url = knora.baseUrl + 'resourcetypes/' + qs.escape(model.id);
+		// get the resource type
+		logdebug('restype: %o', options);
+		// TODO : split the callback function of the request per operations,
+		//        namely; get, create, search
+		request(options, function (error, response, body) {
+			if (error) {
+				// what kind of error is that?
+				logdebug('error: %o', error);
+				// TODO: rework the error description
+				reject(error);
+				return;
+			}
+
+			logdebug('response: %o', response.statusCode);
+			if (response.statusCode !== HttpStatus.OK) {
+				reject(Error(body));
+				return;
+			}
+
+			// map
+			let parsedBody = JSON.parse(body);
+			if (!parsedBody.restype_info || !parsedBody.restype_info.properties) {
+				// we did not find what we are looking for
+				reject(new Error("missing resource type info"));
+				return;
+			}
+
+			// walk through the returned values to store the properties' types
+			/* {
+				 "http://www.knora.org/ontology/0108#hasFamilyName" : {
+					"name": "http://www.knora.org/ontology/0108#hasFamilyName",
+					"guiorder": 1,
+					"description": "Nom.",
+					"valuetype_id": "http://www.knora.org/ontology/knora-base#TextValue",
+					"label": "Nom",
+					"vocabulary": "http://www.knora.org/ontology/0108",
+					"attributes": "maxlength=255;size=80",
+					"occurrence": "1",
+					"id": "http://www.knora.org/ontology/0108#hasFamilyName",
+					"gui_name": "text"
+				 },
+				 "http://www.knora.org/ontology/0108#hasGivenName" : { ... },
+				 ...
+			  }
+			*/
+			let restype = {};
+			logdebug('restype properties: %o', parsedBody.restype_info.properties);
+			_.forEach(parsedBody.restype_info.properties, function (element) {
+				logdebug('restype mapping: %o, %o', element.id, element);
+				restype[element.id] = element;
+			});
+
+			// fill in the top type
+			knora.resource_types[model.id] = restype;
+
+			// walk through the model to check what property is a link
+			// that should be unfolded
+			let requests = [];
+			_.forEach(model.properties, function (value, key) {
+				if (_.isArray(value)) {
+					let subrequest = knora.knora_restypes(value[1]);
+					requests.push(subrequest);
+				}
+			});
+
+			if (requests.length === 0) {
+				fullfill(restype);
+				return;
+			}
+
+			// else: requests is not empty
+			Promise.all(requests)
+				.then(function (results) {
+					_.forEach(results, function (result) {
+						logdebug("request for: ", result);
+					});
+					fullfill(knora.resource_types);
+				})
+				.catch(reject);
+		});
+	});
 };
 
 /**
@@ -82,7 +199,7 @@ Knora.prototype.fixCookies = function (options, req) {
  * options : options to pass over to request
  * model : model description of the object in output
  */
-Knora.prototype.knora_request = function (options, model) {
+Knora.prototype.knora_request = function (options, model, data, previousResult) {
 	let knora = this;
 
 	// make this a promise to be able to chain them
@@ -90,6 +207,237 @@ Knora.prototype.knora_request = function (options, model) {
 		// for synchronizing the subrequests
 		let subrequests = [];
 		let anchors = [];
+
+		// for POST, populate data
+		if (options.method === 'POST') {
+			options.body = {};
+			options.body.properties = {};
+			if (model) {
+				options.body.restype_id = model.id;
+			}
+
+			/* exemple :
+			input data:
+			{
+			    "status": 0,
+			    "resource": {
+			    	"familyName": [ "Jaouen" ],
+			    	"givenName": [ "Loïc" ]
+			    }
+			}
+
+			output data:
+			options.body = {
+				"restype_id": "http://www.knora.org/ontology/0108#Author",
+				"properties": {
+					"http://www.knora.org/ontology/0108#hasFamilyName":
+						[{"richtext_value": {"utf8str": "Jaouen"}}],
+					"http://www.knora.org/ontology/0108#hasGivenName":
+						[{"richtext_value": {"utf8str": "Loïc"}}]
+				},
+				"project_id": "http://data.knora.org/projects/0108",
+				"label": "loic jaouen"
+			};
+			*/
+
+			logdebug("data: %o", data);
+			_.forEach(data.resource, function (values, resourceKey) {
+				if (values.length === 0) {
+					return;
+				}
+
+				// resourceKey : "familyName", match with model
+				// propertyName : "http://www.knora.org/ontology/0108#hasFamilyName"
+				let propertyName = model.properties[resourceKey];
+
+                logdebug("model.id: %o, resourceKey: %o, propertyName: %o", model.id, resourceKey, propertyName);
+                //logdebug("resource_types: %o", knora.resource_types);
+                //logdebug("resource_type model: %o", knora.resource_types[model.id]);
+                logdebug("resource_type model prop: %o", knora.resource_types[model.id][propertyName]);
+
+                // find the data type : "text"
+
+				let propertyType;
+                if (propertyName.constructor === Array) {
+					/*
+                	this is a link to another resource
+
+					[ 'http://www.knora.org/ontology/0108#notionHasAuthor',
+					  { id: 'http://www.knora.org/ontology/0108#Author',
+					    properties: { familyName: 'http://www.knora.org/ontology/0108#hasFamilyName',
+					                  givenName: 'http://www.knora.org/ontology/0108#hasGivenName',
+					                  biography: 'http://www.knora.org/ontology/0108#hasBiography',
+					                  email: 'http://www.knora.org/ontology/0108#hasMbox',
+					                  reference: 'http://www.knora.org/ontology/0108#authorHasReferences'
+					                }
+					   }
+					 ]
+
+					 for links, it is not possible to guess if it is a new value, an edited value, an existing value
+					 we have to let the client do that work
+					 so we expect an id here
+					 */
+					propertyName = propertyName[0];
+					propertyType = "link";
+				} else {
+                    propertyType = knora.resource_types[model.id][propertyName].gui_name;
+				}
+
+				let outValues = [];
+				//logdebug("resource_type proptype: %o", propertyType);
+				switch (propertyType) {
+					case 'text':
+						_.forEach(values, function (value) {
+							outValues.push({"richtext_value": {"utf8str": value}});
+						});
+						break;
+
+					case 'link':
+                        _.forEach(values, function (value) {
+                            outValues.push({"link_value": knora.longIri("atelier-fabula", value)});
+                        });
+                        break;
+
+					case 'richtext':
+                        _.forEach(values, function (value) {
+                        	// xml-ify the value
+							let xmlified = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"+ value;
+							let request = {"richtext_value": {
+                                "xml": xmlified,
+                                "mapping_id": "http://data.knora.org/projects/standoff/mappings/StandardMapping"
+                            }};
+							logdebug("richtext xmlified: %o", request);
+                            outValues.push(request);
+
+                        });
+                        break;
+
+				}
+				options.body.properties[propertyName] = outValues;
+			});
+
+			// TODO: add a label field
+			options.body.label = data.label;
+			// TODO: on login, cache the project id with the auth tocken
+			options.body.project_id = "http://data.knora.org/projects/0108";
+
+			options.json = true;
+		}
+
+
+		// for PUT, populate data
+		if (options.method === 'PUT') {
+			options.body = {};
+			options.body.properties = {};
+			if (model) {
+				options.body.restype_id = model.id;
+			}
+
+			/* exemple :
+			input data:
+			{ "familyName": [ "loic" ] }
+
+			reworked url:
+			/v1/values/${IRI}/values/${VALUE}
+			/v1/values/http%3A%2F%2Frdfh.ch%2Fatelier-fabula%2FfFpLBN-bQUWqOsaaspg0SA%2Fvalues%2Fe691-kFkTISeGkz5OsCS2
+			output data:
+			options.body = {
+				"richtext_value": {"utf8str":"lo\xefc"},
+				"project_id":"http://data.knora.org/projects/0108"}
+			};
+			*/
+
+			logdebug("data: %o", data);
+			_.forEach(data, function (values, resourceKey) {
+				if (values.length === 0) {
+					return;
+				}
+
+				// resourceKey : "familyName", match with model
+				// propertyName : "http://www.knora.org/ontology/0108#hasFamilyName"
+				let propertyName = model.properties[resourceKey];
+				let propertyType;
+                if (propertyName.constructor === Array) {
+                    // link data
+                    propertyName = propertyName[0];
+                    propertyType = "link";
+                } else {
+                    propertyType = knora.resource_types[model.id][propertyName].gui_name;
+				}
+
+				// find the value's UUID
+				logdebug("looking for value UUID in %o", previousResult.props);
+				let property = previousResult.props[propertyName];
+                logdebug("found value %o", property);
+                // TODO: if we didn't find it?
+				/*
+				{ regular_property: 1,
+				  value_restype: [ null ],
+				  guiorder: 1,
+				  value_firstprops: [ null ],
+				  is_annotation: '0',
+				  valuetype_id: 'http://www.knora.org/ontology/knora-base#TextValue',
+				  label: 'Nom',
+				  value_iconsrcs: [ null ],
+				  guielement: 'text',
+				  attributes: 'size=80;maxlength=255',
+				  occurrence: '1',
+				  value_ids: [ 'http://rdfh.ch/atelier-fabula/U_PysjdURDWa70sQS7TmoQ/values/r5c4tnn3QJ6TDaz4Nc9JNQ' ],
+				  value_rights: [ 8 ],
+				  pid: 'http://www.knora.org/ontology/0108#hasFamilyName',
+				  values: [ { utf8str: 'loic' } ],
+				  comments: [ null ]
+				}
+			    */
+
+				// working out the url
+                options.url = knora.getUrlIri("values", property["value_ids"][0]);
+                // TODO: in case of several values
+
+				// translating the value
+				// { "familyName": [ "loic" ] } -> "richtext_value": {"utf8str":"lo\xefc"},
+
+				// find the data type : "text"
+				logdebug("resource_type model prop: %o", knora.resource_types[model.id][propertyName]);
+				let outValues = {};
+				//logdebug("resource_type proptype: %o", propertyType);
+				switch (propertyType) {
+                    case 'text':
+                        _.forEach(values, function (value) {
+                            outValues.richtext_value = {"utf8str": value};
+                        });
+                        break;
+
+                    case 'link':
+                        _.forEach(values, function (value) {
+                            outValues.link_value = knora.longIri("atelier-fabula", value);
+                        });
+                        break;
+
+                    case 'richtext':
+                        _.forEach(values, function (value) {
+                            // xml-ify the value
+                            let xmlified = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"+ value;
+                            let request = {
+                                "xml": xmlified,
+                                "mapping_id": "http://data.knora.org/projects/standoff/mappings/StandardMapping"
+                            };
+                            logdebug("richtext xmlified: %o", request);
+                            outValues.richtext_value = request;
+
+                        });
+                        break;
+
+                }
+				logdebug("filled out values: %o", outValues);
+				options.body = outValues;
+			});
+
+			// TODO: on login, cache the project id with the auth tocken
+			options.body.project_id = "http://data.knora.org/projects/0108";
+
+			options.json = true;
+		}
 
 		logdebug('request options: %o', options);
 		request(options, function (error, response, body) {
@@ -125,8 +473,14 @@ Knora.prototype.knora_request = function (options, model) {
 
 
 			// is the response a json object?
+			let parsedBody = body;
 			try {
-				let parsedBody = JSON.parse(body);
+				if (typeof body === 'string' || body instanceof String) {
+					logdebug("typeof body: %o", typeof body);
+					parsedBody = JSON.parse(body);
+				}
+				logdebug("json returned: %j", parsedBody);
+
 				// deal with a json object
 				toReturn.status = parsedBody.status || knora.configKnora.statusCode.ok;
 				let message = parsedBody.message || parsedBody.error || undefined;
@@ -141,16 +495,81 @@ Knora.prototype.knora_request = function (options, model) {
 				}
 				if (parsedBody.props) {
 					toReturn.props = parsedBody.props;
+					//} else {
+					//	if (parsedBody.results) {
+					//		toReturn.props = parsedBody.results;
+					//	}
 				}
 				if (toReturn.status !== knora.configKnora.statusCode.ok) {
+					logdebug("filling on status: %o", toReturn.status);
 					toReturn.message = message;
 					fulfill(toReturn);
 					return;
 				}
-			} catch (e) {
+				// result of a post
+				if (parsedBody.res_id) {
+					logdebug("filling on res_id: %o", parsedBody.res_id);
+					toReturn.id = knora.shortIri(parsedBody.res_id);
+					fulfill(toReturn);
+					return;
+				}
+				// result of a put
+				if (parsedBody.id) {
+					logdebug("filling on (value) id: %o", parsedBody.id);
+					toReturn.id = parsedBody.id;
+					fulfill(toReturn);
+					return;
+				}
+			}
+			catch (e) {
 				// the result is not a json object
+				logdebug("filling on exception (no json): %o, %o", e, body);
 				toReturn.status = knora.configKnora.statusCode.other;
 				toReturn.message = body;
+				fulfill(toReturn);
+				return;
+			}
+
+			// search
+			if (parsedBody.subjects) {
+				/*
+				{
+			"subjects": [{
+				"iconlabel": "Article Fabula",
+				"valuetype_id": ["http://www.w3.org/2000/01/rdf-schema#label"],
+				"preview_nx": 32,
+				"icontitle": "Article Fabula",
+				"preview_ny": 32,
+				"obj_id": "http://rdfh.ch/atelier-fabula/1m0DgvydTUWJLKFk435PHg",
+				"iconsrc": null,
+				"preview_path": null,
+				"rights": 8,
+				"value": ["sdf"],
+				"valuelabel": ["Label"]
+			}, {
+				"iconlabel": "Article Fabula",
+				"valuetype_id": ["http://www.w3.org/2000/01/rdf-schema#label"],
+				"preview_nx": 32,
+				"icontitle": "Article Fabula",
+				"preview_ny": 32,
+				"obj_id": "http://rdfh.ch/atelier-fabula/3hIi3CxjQpat-8UdRjkGuw",
+				"iconsrc": null,
+				"preview_path": null,
+				"rights": 8,
+				"value": ["Le travail de la narration dramatique, par Danielle Chaperon"],
+				"valuelabel": ["Label"]
+			}, {
+				*/
+
+				// walk through the results
+				toReturn.found = [];
+				_.forEach(parsedBody.subjects, function(element) {
+					toReturn.found.push({
+						id : knora.shortIri(element.obj_id),
+						label : element.value.pop()
+					})
+				});
+
 				fulfill(toReturn);
 				return;
 			}
@@ -158,6 +577,7 @@ Knora.prototype.knora_request = function (options, model) {
 			logdebug("props of model: %o", model);
 
 			if (!model) {
+				logdebug("filling on no model");
 				fulfill(toReturn);
 				return;
 			}
@@ -173,8 +593,10 @@ Knora.prototype.knora_request = function (options, model) {
 			logdebugReq("props: %o", toReturn.props);
 
 			toReturn.resource = {};
+            toReturn.resource.id = knora.shortIri(toReturn.resdata.res_id);
+
 			// iterate over the properties of the model
-			_.forEach(model, function (value, key) {
+			_.forEach(model.properties, function (value, key) {
 				// key   : title
 				// value : http://www.knora.org/ontology/0108#articleHasTitle'
 				// ---------- or
@@ -203,7 +625,7 @@ Knora.prototype.knora_request = function (options, model) {
 								if (toReturn.props[value].guielement === "text") {
 									toReturn.resource[key].push(item.utf8str);
 								} else if (toReturn.props[value].guielement === "richtext") {
-									toReturn.resource[key].push(item.xml);
+									toReturn.resource[key].push(item.xml.substr(item.xml.indexOf('>')+2));
 								}
 							});
 							break;
@@ -215,7 +637,7 @@ Knora.prototype.knora_request = function (options, model) {
 						// link
 						case "http://www.knora.org/ontology/knora-base#LinkValue":
 							let linkedOptions = _.clone(options);
-							for (var i = 0; i < toReturn.props[value].values.length; i++) {
+							for (let i = 0; i < toReturn.props[value].values.length; i++) {
 								linkedOptions.url = knora.getUrlIri("resources", toReturn.props[value].values[i]);
 								logdebug("cooool %o", linkedOptions.url);
 
@@ -237,7 +659,7 @@ Knora.prototype.knora_request = function (options, model) {
 					.then(function (results) {
 						logdebug("all subrequests have returned %s", results.length);
 						// merge the answers
-						for (var i = 0; i < results.length; i++) {
+						for (let i = 0; i < results.length; i++) {
 							// TODO: merge states and messages
 							logdebug("subreq result %n: %o => %o", 1, anchors[i], results[i].resource);
 							toReturn.resource[anchors[i]].push(results[i].resource);
@@ -275,14 +697,45 @@ Knora.prototype.api_request = function (options, req, res, model) {
 	// make this available in request call
 	let knora = this;
 
-	this.fixCookies(options, req);
-
-	logdebug('sending request');
-	// send the request
-
-	this.knora_request(options, model)
+	// make sure that we know the model's type
+	this.knora_restypes(model)
+		// fix the cookies
+	// then proceed with the request
 		.then(function (result) {
+            logdebug("types known: %o", result);
 
+            return Promise.resolve(knora.fixCookies(options, req));
+        })
+		// if this is a put request, query the resource to modify first
+		.then(function(result) {
+            logdebug('fixed cookies: %o', result);
+
+            // if this is not a PUT request, just move on
+            if (options.method !== 'PUT') {
+                logdebug('flow, no put, going on with: %s', options.method);
+                return Promise.resolve(result);
+            }
+
+            // else we have an update request, we have to query the resource again first
+            options.method = 'GET';
+            options.next = 'PUT';
+
+            logdebug('flow, put request, going on first with: %s', options.method);
+            return knora.knora_request(options, model, req.body);
+        })
+		.then(function(result) {
+			if (options.next) {
+                options.method = options.next;
+                delete options.next;
+                logdebug('flow, after GET, now procede with the put request: %s', options.method);
+			} else {
+                logdebug('sending request, body: %o', req.body);
+			}
+
+			return knora.knora_request(options, model, req.body, result);
+		})
+		// then return the result
+		.then(function (result) {
 			logdebug("success!!! %o", result);
 
 			/* clean up result from internal states */
@@ -299,6 +752,7 @@ Knora.prototype.api_request = function (options, req, res, model) {
 			res.status(HttpStatus.OK);
 			res.json(result);
 		})
+		// or complain about error
 		.catch(function (error) {
 			logdebug("catching an error :(", error);
 			if (error.status) {
@@ -314,7 +768,8 @@ Knora.prototype.api_request = function (options, req, res, model) {
 				});
 			}
 		});
-};
+}
+;
 
 /**
  * Login
@@ -361,6 +816,22 @@ Knora.prototype.search = function (search, req, res) {
 
 	// forward the request to Knora
 	this.api_request(options, req, res, undefined);
+};
+
+Knora.prototype.api_search_by_type = function (project, model, req, res) {
+	// http://localhost:3333/v1/search/?searchtype=extended&show_nrows=25&start_at=0&filter_by_restype=http://www.knora.org/ontology/0108#Article&filter_by_project=http://data.knora.org/projects/0108
+	let options = {
+		method: 'GET',
+	};
+	options.url = this.baseUrl + "search/?searchtype=extended&show_nrows=5&start_at=0";
+	if (model) {
+		options.url += "&filter_by_restype=" + qs.escape(model.id);
+	}
+	if (project) {
+		options.url += "&filter_by_project=" + qs.escape(project);
+	}
+
+	this.api_request(options, req, res, model);
 };
 
 module.exports = Knora;
