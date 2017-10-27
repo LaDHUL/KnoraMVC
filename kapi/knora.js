@@ -617,35 +617,38 @@ Knora.prototype.knora_request = function (options, model, data, previousResult) 
 
 				// search for the model's property in the knora response
 				if (toReturn.props[value]) {
-					logdebug("  found %o", value);
-					switch (toReturn.props[value].valuetype_id) {
-						// values
-						case "http://www.knora.org/ontology/knora-base#TextValue":
-							_.forEach(toReturn.props[value].values, function (item) {
-								if (toReturn.props[value].guielement === "text") {
-									toReturn.resource[key].push(item.utf8str);
-								} else if (toReturn.props[value].guielement === "richtext") {
-									toReturn.resource[key].push(item.xml.substr(item.xml.indexOf('>')+2));
-								}
-							});
-							break;
+                    if (toReturn.props[value].values) {
 
-						//case "":
-						//	...;
-						//	break;
+                        logdebug("  found %o", value);
+                        switch (toReturn.props[value].valuetype_id) {
+                            // values
+                            case "http://www.knora.org/ontology/knora-base#TextValue":
+                                _.forEach(toReturn.props[value].values, function (item) {
+                                    if (toReturn.props[value].guielement === "text") {
+                                        toReturn.resource[key].push(item.utf8str);
+                                    } else if (toReturn.props[value].guielement === "richtext") {
+                                        toReturn.resource[key].push(item.xml.substr(item.xml.indexOf('>') + 2));
+                                    }
+                                });
+                                break;
 
-						// link
-						case "http://www.knora.org/ontology/knora-base#LinkValue":
-							let linkedOptions = _.clone(options);
-							for (let i = 0; i < toReturn.props[value].values.length; i++) {
-								linkedOptions.url = knora.getUrlIri("resources", toReturn.props[value].values[i]);
-								logdebug("cooool %o", linkedOptions.url);
+                            //case "":
+                            //	...;
+                            //	break;
 
-								// req and res are the entry point (original) request and result, we keep them
-								subrequests.push(knora.knora_request(linkedOptions, linkedModel));
-								anchors.push(key);
-							}
-					}
+                            // link
+                            case "http://www.knora.org/ontology/knora-base#LinkValue":
+                                let linkedOptions = _.clone(options);
+                                for (let i = 0; i < toReturn.props[value].values.length; i++) {
+                                    linkedOptions.url = knora.getUrlIri("resources", toReturn.props[value].values[i]);
+                                    logdebug("cooool %o", linkedOptions.url);
+
+                                    // req and res are the entry point (original) request and result, we keep them
+                                    subrequests.push(knora.knora_request(linkedOptions, linkedModel));
+                                    anchors.push(key);
+                                }
+                        }
+                    } /* else: the value is empty, do nothing */
 				} else {
 					logdebug("  not found %o", value);
 					// TODO: error in the model? in the data? think of test cases
