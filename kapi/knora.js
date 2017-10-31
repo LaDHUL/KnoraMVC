@@ -168,8 +168,10 @@ Knora.prototype.knora_restypes = function (model) {
  * options : options to pass over to request
  * model : model description of the object in output
  */
-Knora.prototype.knora_request = function (options, model, data, previousResult, id) {
+Knora.prototype.knora_request = function (args) {
 	let knora = this;
+
+	let { options, model, data, previousResult, id} = args;
 
 	// make this a promise to be able to chain them
 	return new Promise(function (fulfill, reject) {
@@ -628,7 +630,7 @@ Knora.prototype.knora_request = function (options, model, data, previousResult, 
                                     logdebug("cooool %o", linkedOptions.url);
 
                                     // req and res are the entry point (original) request and result, we keep them
-                                    subrequests.push(knora.knora_request(linkedOptions, linkedModel));
+                                    subrequests.push(knora.knora_request({options: linkedOptions, model: linkedModel}));
                                     anchors.push(key);
                                 }
                         }
@@ -708,7 +710,7 @@ Knora.prototype.api_request = function (options, req, res, model) {
             options.next = 'PUT';
 
             logdebug('flow, put request, going on first with: %s', options.method);
-            return knora.knora_request(options, model, req.body);
+            return knora.knora_request({options: options, model: model, data: req.body});
         })
 		.then(function(result) {
 			if (options.next) {
@@ -719,7 +721,7 @@ Knora.prototype.api_request = function (options, req, res, model) {
                 logdebug('sending request, body: %o', req.body);
 			}
 
-			return knora.knora_request(options, model, req.body, result, req.params.iri);
+			return knora.knora_request({options: options, model: model, data: req.body, previousResult: result, id: req.params.iri});
 		})
 		// then return the result
 		.then(function (result) {
