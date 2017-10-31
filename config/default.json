@@ -11,6 +11,7 @@
       "bad_credentials": 2,
       //"not_found": 3,
       "not_found": 9,
+      "atomic_operation": 10,
       "other": 999
     },
     "project" : {
