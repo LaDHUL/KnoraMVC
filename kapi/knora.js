@@ -1,6 +1,5 @@
 'use strict';
 
-const config = require('config');
 const _ = require('lodash');
 /**
  * implementation notes: we use 'request' rather than 'http'
@@ -10,43 +9,14 @@ const request = require('request');
 const Log = require('log'), log = new Log('info');
 const logdebug = require('debug')('knora');
 const logdebugReq = require('debug')('req');
+const logdebugDepth = require('debug')('depth');
 const HttpStatus = require('http-status-codes');
 const qs = require('querystring');
-
+const Util = require('./util');
 
 function Knora() {
-	this.configKnora = config.get('knora');
-	this.baseUrl =
-		this.configKnora.server.protocol + '://' +
-		this.configKnora.server.host + "/" +
-		this.configKnora.server.version + "/";
 	this.resource_types = {};
-}
-
-/**
- * Helper method to workout URLs
- *
- * command : "resource"
- * iri : resource IRI
- *
- * @param command
- * @param iri
- * @returns {string}
- */
-Knora.prototype.getUrlIri = function (command, iri) {
-	return this.baseUrl + command + "/" + qs.escape(iri);
-};
-
-Knora.prototype.getUrl = function (command, project, iri) {
-	return this.baseUrl + command + "/" + qs.escape("http://rdfh.ch/" + project + "/" + iri);
-};
-
-Knora.prototype.shortIri = function (url) {
-	return url.substr(url.lastIndexOf('/') + 1);
-};
-
-Knora.prototype.longIri = function (project, iri) {
-	return "http://rdfh.ch/"+ project + "/" + iri;
+	this.util = new Util();
 }
 
 /**
@@ -100,7 +70,7 @@ Knora.prototype.knora_restypes = function (model) {
 		}
 
 		// else request the information
-		options.url = knora.baseUrl + 'resourcetypes/' + qs.escape(model.id);
+		options.url = knora.util.baseUrl + 'resourcetypes/' + qs.escape(model.id);
 		// get the resource type
 		logdebug('restype: %o', options);
 		// TODO : split the callback function of the request per operations,
@@ -199,8 +169,17 @@ Knora.prototype.knora_restypes = function (model) {
  * options : options to pass over to request
  * model : model description of the object in output
  */
-Knora.prototype.knora_request = function (options, model, data, previousResult) {
+Knora.prototype.knora_request = function (args) {
 	let knora = this;
+
+	let { options, model, data, previousResult, id, depth} = args;
+    logdebugDepth("depth: %s", depth);
+	logdebugDepth("args: %o", args);
+	if (depth < 0) {
+		// if no recursion, provide only the IRI
+
+		return Promise.resolve({resource: {id: knora.util.shortIriEscaped(options.url) }});
+	}
 
 	// make this a promise to be able to chain them
 	return new Promise(function (fulfill, reject) {
@@ -211,9 +190,18 @@ Knora.prototype.knora_request = function (options, model, data, previousResult) 
 		// for POST, populate data
 		if (options.method === 'POST') {
 			options.body = {};
-			options.body.properties = {};
 			if (model) {
 				options.body.restype_id = model.id;
+			}
+
+			if (id) {
+                // if we add properties to an existing id
+				options.body.res_id = knora.util.longIri("atelier-fabula", id);
+			} else {
+                // if we create a whole new resource
+                // TODO: add a label field
+                options.body.label = data.label;
+                options.body.properties = {};
 			}
 
 			/* exemple :
@@ -283,42 +271,24 @@ Knora.prototype.knora_request = function (options, model, data, previousResult) 
                     propertyType = knora.resource_types[model.id][propertyName].gui_name;
 				}
 
-				let outValues = [];
-				//logdebug("resource_type proptype: %o", propertyType);
-				switch (propertyType) {
-					case 'text':
-						_.forEach(values, function (value) {
-							outValues.push({"richtext_value": {"utf8str": value}});
-						});
-						break;
+				let formatter = knora.util.knora_get_formatter(propertyType);
 
-					case 'link':
-                        _.forEach(values, function (value) {
-                            outValues.push({"link_value": knora.longIri("atelier-fabula", value)});
-                        });
-                        break;
-
-					case 'richtext':
-                        _.forEach(values, function (value) {
-                        	// xml-ify the value
-							let xmlified = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"+ value;
-							let request = {"richtext_value": {
-                                "xml": xmlified,
-                                "mapping_id": "http://data.knora.org/projects/standoff/mappings/StandardMapping"
-                            }};
-							logdebug("richtext xmlified: %o", request);
-                            outValues.push(request);
-
-                        });
-                        break;
-
+                if (id) {
+                	// values is a single value
+					formatter(values, "atelier-fabula", options.body);
+                    options.body.prop = propertyName;
+				} else {
+                    let outValues = [];
+                    _.forEach(values, function (value) {
+                        logdebug("value: %o", value);
+                        outValues.push(formatter(value, "atelier-fabula", {}));
+                    });
+                    options.body.properties[propertyName] = outValues;
 				}
-				options.body.properties[propertyName] = outValues;
 			});
 
-			// TODO: add a label field
-			options.body.label = data.label;
-			// TODO: on login, cache the project id with the auth tocken
+
+			// TODO: on login, cache the project id with the auth token
 			options.body.project_id = "http://data.knora.org/projects/0108";
 
 			options.json = true;
@@ -356,11 +326,27 @@ Knora.prototype.knora_request = function (options, model, data, previousResult) 
 				// resourceKey : "familyName", match with model
 				// propertyName : "http://www.knora.org/ontology/0108#hasFamilyName"
 				let propertyName = model.properties[resourceKey];
+				if (!propertyName) {
+                    reject({
+                        "status": 999,
+                        "message": "could not find property for: " + resourceKey
+                    });
+				}
 				let propertyType;
                 if (propertyName.constructor === Array) {
                     // link data
                     propertyName = propertyName[0];
                     propertyType = "link";
+
+                    // check for unique value
+					if (data.length > 1) {
+                        // the result is not a json object
+                        logdebug("filling on error (PUT link with more than 1 value): %o", data);
+                        toReturn.status =knora.util.configKnora.statusCode.atomic_operation;
+                        toReturn.message = "PUT request on link property is an atomic operation"+ JSON.stringify(data);
+                        fulfill(toReturn);
+                        return;
+					}
                 } else {
                     propertyType = knora.resource_types[model.id][propertyName].gui_name;
 				}
@@ -390,50 +376,58 @@ Knora.prototype.knora_request = function (options, model, data, previousResult) 
 				}
 			    */
 
-				// working out the url
-                options.url = knora.getUrlIri("values", property["value_ids"][0]);
-                // TODO: in case of several values
+                if (property["value_ids"]) {
+                    // we have a value to modify
 
-				// translating the value
-				// { "familyName": [ "loic" ] } -> "richtext_value": {"utf8str":"lo\xefc"},
+                    // working out the url
+                    options.url = knora.util.getUrlIri("values", property["value_ids"][0]);
+                    // TODO: in case of several values
 
-				// find the data type : "text"
-				logdebug("resource_type model prop: %o", knora.resource_types[model.id][propertyName]);
-				let outValues = {};
-				//logdebug("resource_type proptype: %o", propertyType);
-				switch (propertyType) {
-                    case 'text':
-                        _.forEach(values, function (value) {
-                            outValues.richtext_value = {"utf8str": value};
-                        });
-                        break;
+                } else {
+                    // there is no value yet
+                    options.url = knora.util.getUrlIri("values", knora.util.shortIri(options.url));
+				}
 
-                    case 'link':
-                        _.forEach(values, function (value) {
-                            outValues.link_value = knora.longIri("atelier-fabula", value);
-                        });
-                        break;
+                    // translating the value
+                    // { "familyName": [ "loic" ] } -> "richtext_value": {"utf8str":"lo\xefc"},
 
-                    case 'richtext':
-                        _.forEach(values, function (value) {
-                            // xml-ify the value
-                            let xmlified = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"+ value;
-                            let request = {
-                                "xml": xmlified,
-                                "mapping_id": "http://data.knora.org/projects/standoff/mappings/StandardMapping"
-                            };
-                            logdebug("richtext xmlified: %o", request);
-                            outValues.richtext_value = request;
+                    // find the data type : "text"
+                    logdebug("resource_type model prop: %o", knora.resource_types[model.id][propertyName]);
+                    let outValues = {};
+                    //logdebug("resource_type proptype: %o", propertyType);
+                    switch (propertyType) {
+                        case 'text':
+                            _.forEach(values, function (value) {
+                                outValues.richtext_value = {"utf8str": value};
+                            });
+                            break;
 
-                        });
-                        break;
+                        case 'link':
+                            _.forEach(values, function (value) {
+                                outValues.link_value = knora.util.longIri("atelier-fabula", value);
+                            });
+                            break;
 
-                }
-				logdebug("filled out values: %o", outValues);
-				options.body = outValues;
+                        case 'richtext':
+                            _.forEach(values, function (value) {
+                                // xml-ify the value
+                                let xmlified = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + value;
+                                let request = {
+                                    "xml": xmlified,
+                                    "mapping_id": "http://data.knora.org/projects/standoff/mappings/StandardMapping"
+                                };
+                                logdebug("richtext xmlified: %o", request);
+                                outValues.richtext_value = request;
+
+                            });
+                            break;
+
+                    }
+                    logdebug("filled out values: %o", outValues);
+                    options.body = outValues;
 			});
 
-			// TODO: on login, cache the project id with the auth tocken
+			// TODO: on login, cache the project id with the auth token
 			options.body.project_id = "http://data.knora.org/projects/0108";
 
 			options.json = true;
@@ -482,7 +476,7 @@ Knora.prototype.knora_request = function (options, model, data, previousResult) 
 				logdebug("json returned: %j", parsedBody);
 
 				// deal with a json object
-				toReturn.status = parsedBody.status || knora.configKnora.statusCode.ok;
+				toReturn.status = parsedBody.status ||knora.util.configKnora.statusCode.ok;
 				let message = parsedBody.message || parsedBody.error || undefined;
 				if (parsedBody.userProfile) {
 					toReturn.user = parsedBody.userProfile.userData;
@@ -500,7 +494,7 @@ Knora.prototype.knora_request = function (options, model, data, previousResult) 
 					//		toReturn.props = parsedBody.results;
 					//	}
 				}
-				if (toReturn.status !== knora.configKnora.statusCode.ok) {
+				if (toReturn.status !==knora.util.configKnora.statusCode.ok) {
 					logdebug("filling on status: %o", toReturn.status);
 					toReturn.message = message;
 					fulfill(toReturn);
@@ -509,7 +503,7 @@ Knora.prototype.knora_request = function (options, model, data, previousResult) 
 				// result of a post
 				if (parsedBody.res_id) {
 					logdebug("filling on res_id: %o", parsedBody.res_id);
-					toReturn.id = knora.shortIri(parsedBody.res_id);
+					toReturn.id =knora.util.shortIri(parsedBody.res_id);
 					fulfill(toReturn);
 					return;
 				}
@@ -524,7 +518,7 @@ Knora.prototype.knora_request = function (options, model, data, previousResult) 
 			catch (e) {
 				// the result is not a json object
 				logdebug("filling on exception (no json): %o, %o", e, body);
-				toReturn.status = knora.configKnora.statusCode.other;
+				toReturn.status =knora.util.configKnora.statusCode.other;
 				toReturn.message = body;
 				fulfill(toReturn);
 				return;
@@ -593,7 +587,7 @@ Knora.prototype.knora_request = function (options, model, data, previousResult) 
 			logdebugReq("props: %o", toReturn.props);
 
 			toReturn.resource = {};
-            toReturn.resource.id = knora.shortIri(toReturn.resdata.res_id);
+            toReturn.resource.id = knora.util.shortIri(toReturn.resdata.res_id);
 
 			// iterate over the properties of the model
 			_.forEach(model.properties, function (value, key) {
@@ -617,37 +611,40 @@ Knora.prototype.knora_request = function (options, model, data, previousResult) 
 
 				// search for the model's property in the knora response
 				if (toReturn.props[value]) {
-					logdebug("  found %o", value);
-					switch (toReturn.props[value].valuetype_id) {
-						// values
-						case "http://www.knora.org/ontology/knora-base#TextValue":
-							_.forEach(toReturn.props[value].values, function (item) {
-								if (toReturn.props[value].guielement === "text") {
-									toReturn.resource[key].push(item.utf8str);
-								} else if (toReturn.props[value].guielement === "richtext") {
-									toReturn.resource[key].push(item.xml.substr(item.xml.indexOf('>')+2));
-								}
-							});
-							break;
+                    if (toReturn.props[value].values) {
 
-						//case "":
-						//	...;
-						//	break;
+                        logdebug("  found %o", value);
+                        switch (toReturn.props[value].valuetype_id) {
+                            // values
+                            case "http://www.knora.org/ontology/knora-base#TextValue":
+                                _.forEach(toReturn.props[value].values, function (item) {
+                                    if (toReturn.props[value].guielement === "text") {
+                                        toReturn.resource[key].push(item.utf8str);
+                                    } else if (toReturn.props[value].guielement === "richtext") {
+                                        toReturn.resource[key].push(item.xml.substr(item.xml.indexOf('>') + 2));
+                                    }
+                                });
+                                break;
 
-						// link
-						case "http://www.knora.org/ontology/knora-base#LinkValue":
-							let linkedOptions = _.clone(options);
-							for (let i = 0; i < toReturn.props[value].values.length; i++) {
-								linkedOptions.url = knora.getUrlIri("resources", toReturn.props[value].values[i]);
-								logdebug("cooool %o", linkedOptions.url);
+                            //case "":
+                            //	...;
+                            //	break;
 
-								// req and res are the entry point (original) request and result, we keep them
-								subrequests.push(knora.knora_request(linkedOptions, linkedModel));
-								anchors.push(key);
-							}
-					}
+                            // link
+                            case "http://www.knora.org/ontology/knora-base#LinkValue":
+                                let linkedOptions = _.clone(options);
+                                for (let i = 0; i < toReturn.props[value].values.length; i++) {
+                                    linkedOptions.url = knora.util.getUrlIri("resources", toReturn.props[value].values[i]);
+                                    logdebug("cooool %o", linkedOptions.url);
+
+                                    // req and res are the entry point (original) request and result, we keep them
+                                    subrequests.push(knora.knora_request({options: linkedOptions, model: linkedModel, depth: (depth-1)}));
+                                    anchors.push(key);
+                                }
+                        }
+                    } /* else: the value is empty, do nothing */
 				} else {
-					logdebug("  not found %o", value);
+					logdebug("  not found %o in %o", value, toReturn.props);
 					// TODO: error in the model? in the data? think of test cases
 				}
 			});
@@ -721,18 +718,18 @@ Knora.prototype.api_request = function (options, req, res, model) {
             options.next = 'PUT';
 
             logdebug('flow, put request, going on first with: %s', options.method);
-            return knora.knora_request(options, model, req.body);
+            return knora.knora_request({options: options, model: model, data: req.body, depth: 1});
         })
 		.then(function(result) {
 			if (options.next) {
                 options.method = options.next;
                 delete options.next;
-                logdebug('flow, after GET, now procede with the put request: %s', options.method);
+                logdebug('flow, after GET, now proceed with the put request: %s', options.method);
 			} else {
                 logdebug('sending request, body: %o', req.body);
 			}
 
-			return knora.knora_request(options, model, req.body, result);
+			return knora.knora_request({options: options, model: model, data: req.body, previousResult: result, id: req.params.iri, depth: 1});
 		})
 		// then return the result
 		.then(function (result) {
@@ -763,7 +760,7 @@ Knora.prototype.api_request = function (options, req, res, model) {
 				// this an error that we don't know
 				res.status(HttpStatus.BAD_GATEWAY);
 				res.json({
-					status: knora.configKnora.statusCode.other,
+					status:knora.util.configKnora.statusCode.other,
 					message: 'something wrong happened uphill, check config or knora'
 				});
 			}
@@ -782,7 +779,7 @@ Knora.prototype.api_request = function (options, req, res, model) {
 Knora.prototype.login = function (req, res) {
 	log.info("login");
 	// fill in the url and method
-	let url = this.baseUrl + "session";
+	let url = this.util.baseUrl + "session";
 	let options = {
 		method: 'POST',
 		url: url
@@ -794,7 +791,7 @@ Knora.prototype.login = function (req, res) {
 
 Knora.prototype.logout = function (req, res) {
 	// fill in the url and method
-	let url = this.baseUrl + "session";
+	let url = this.util.baseUrl + "session";
 	let options = {
 		method: 'DELETE',
 		url: url
@@ -808,7 +805,7 @@ Knora.prototype.search = function (search, req, res) {
 	// fill in the url and method
 	let search_string = "?searchtype=extended&show_nrows=25&start_at=0&filter_by_project=http://data.knora.org/projects/0108";
 	//let url = this.baseUrl + "search/" + qs.escape(iri);
-	let url = this.baseUrl + "search/" + search_string;
+	let url = this.util.baseUrl + "search/" + search_string;
 	let options = {
 		method: 'GET',
 		url: url
@@ -823,7 +820,7 @@ Knora.prototype.api_search_by_type = function (project, model, req, res) {
 	let options = {
 		method: 'GET',
 	};
-	options.url = this.baseUrl + "search/?searchtype=extended&show_nrows=5&start_at=0";
+	options.url = this.util.baseUrl + "search/?searchtype=extended&show_nrows=5&start_at=0";
 	if (model) {
 		options.url += "&filter_by_restype=" + qs.escape(model.id);
 	}
