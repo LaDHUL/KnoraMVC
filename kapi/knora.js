@@ -9,6 +9,7 @@ const request = require('request');
 const Log = require('log'), log = new Log('info');
 const logdebug = require('debug')('knora');
 const logdebugReq = require('debug')('req');
+const logdebugDepth = require('debug')('depth');
 const HttpStatus = require('http-status-codes');
 const qs = require('querystring');
 const Util = require('./util');
@@ -171,7 +172,14 @@ Knora.prototype.knora_restypes = function (model) {
 Knora.prototype.knora_request = function (args) {
 	let knora = this;
 
-	let { options, model, data, previousResult, id} = args;
+	let { options, model, data, previousResult, id, depth} = args;
+    logdebugDepth("depth: %s", depth);
+	logdebugDepth("args: %o", args);
+	if (depth < 0) {
+		// if no recursion, provide only the IRI
+
+		return Promise.resolve({resource: {id: knora.util.shortIriEscaped(options.url) }});
+	}
 
 	// make this a promise to be able to chain them
 	return new Promise(function (fulfill, reject) {
@@ -630,13 +638,13 @@ Knora.prototype.knora_request = function (args) {
                                     logdebug("cooool %o", linkedOptions.url);
 
                                     // req and res are the entry point (original) request and result, we keep them
-                                    subrequests.push(knora.knora_request({options: linkedOptions, model: linkedModel}));
+                                    subrequests.push(knora.knora_request({options: linkedOptions, model: linkedModel, depth: (depth-1)}));
                                     anchors.push(key);
                                 }
                         }
                     } /* else: the value is empty, do nothing */
 				} else {
-					logdebug("  not found %o", value);
+					logdebug("  not found %o in %o", value, toReturn.props);
 					// TODO: error in the model? in the data? think of test cases
 				}
 			});
@@ -710,7 +718,7 @@ Knora.prototype.api_request = function (options, req, res, model) {
             options.next = 'PUT';
 
             logdebug('flow, put request, going on first with: %s', options.method);
-            return knora.knora_request({options: options, model: model, data: req.body});
+            return knora.knora_request({options: options, model: model, data: req.body, depth: 1});
         })
 		.then(function(result) {
 			if (options.next) {
@@ -721,7 +729,7 @@ Knora.prototype.api_request = function (options, req, res, model) {
                 logdebug('sending request, body: %o', req.body);
 			}
 
-			return knora.knora_request({options: options, model: model, data: req.body, previousResult: result, id: req.params.iri});
+			return knora.knora_request({options: options, model: model, data: req.body, previousResult: result, id: req.params.iri, depth: 1});
 		})
 		// then return the result
 		.then(function (result) {

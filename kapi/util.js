@@ -68,8 +68,13 @@ Util.prototype.getUrl = function (command, project, iri) {
 	return this.baseUrl + command + "/" + qs.escape("http://rdfh.ch/" + project + "/" + iri);
 };
 
+Util.prototype.shortIriEscaped = function (url) {
+    return Util.prototype.shortIri(qs.unescape(url));
+};
+
 Util.prototype.shortIri = function (url) {
-	return url.substr(url.lastIndexOf('/') + 1);
+    let index = url.lastIndexOf('/');
+    return url.substr(url.lastIndexOf('/') + 1);
 };
 
 Util.prototype.longIri = function (project, iri) {
