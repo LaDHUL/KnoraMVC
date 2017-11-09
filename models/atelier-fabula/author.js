@@ -11,7 +11,8 @@ module.exports = {
                 'givenName': 'http://www.knora.org/ontology/0108#hasGivenName',
                 'biography': 'http://www.knora.org/ontology/0108#hasBiography',
                 'email': 'http://www.knora.org/ontology/0108#hasMbox',
-                'reference': 'http://www.knora.org/ontology/0108#authorHasReferences'
+                'furtherInformation': 'http://www.knora.org/ontology/0108#hasFurtherInformation',
+                'reference': 'http://www.knora.org/ontology/0108#authorHasReferences',
             }
         }
     }

@@ -1,0 +1,662 @@
+{
+	"variables": [],
+	"info": {
+		"name": "fapi-test-suite",
+		"_postman_id": "2cad09fd-aad4-6d0c-652f-33f976a7c4ef",
+		"description": "",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "login",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"var jsonData = JSON.parse(responseBody);",
+							"",
+							"tests[\"Content-Type is present\"] = postman.getResponseHeader(\"Content-Type\");",
+							""
+						]
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": {
+						"username": "fabula@unil.ch",
+						"password": "c2B4",
+						"showPassword": false
+					}
+				},
+				"method": "POST",
+				"header": [],
+				"body": {},
+				"url": "https://{{server}}:{{port}}/session/login",
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "create an institution",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"created resource\", function () {",
+							"    var jsonData = pm.response.json();",
+							"",
+							"    // sanity checks",
+							"    pm.expect(jsonData.status).to.eql(0);",
+							"    pm.expect(jsonData.id).to.exist;",
+							"    ",
+							"    // save id for later use",
+							"    postman.setEnvironmentVariable(\"institution_id\", jsonData.id);",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": {
+						"username": "fabula@unil.ch",
+						"password": "c2B4",
+						"showPassword": false
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"resource\": {\n        \"name\": [ \"{{institution_name}}\" ],\n        \"altname\": [ \"{{institution_alt_name}}\" ]\n    },\n    \"label\": \"{{institution_label}}\"\n}"
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/institution",
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "get created institution",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"get expected resource\", function () {",
+							"    var jsonData = pm.response.json();",
+							"",
+							"    // sanity checks",
+							"    pm.expect(jsonData.status).to.eql(0);",
+							"",
+							"    // checking values",
+							"    pm.expect(jsonData.resource.id).to.eql(pm.environment.get(\"institution_id\"));",
+							"    pm.expect(jsonData.resource.name[0]).to.eql(pm.environment.get(\"institution_name\"));",
+							"    pm.expect(jsonData.resource.altname[0]).to.eql(pm.environment.get(\"institution_alt_name\"));",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/institution/{{institution_id}}",
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "create an author",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"var jsonData = pm.response.json();",
+							"",
+							"pm.test(\"created resource sanity check\", function () {",
+							"    pm.expect(jsonData.status).to.eql(0);",
+							"    pm.expect(jsonData.id).to.exist;",
+							"    ",
+							"    // save id for later use",
+							"    postman.setEnvironmentVariable(\"author_id\", jsonData.id);",
+							"});",
+							"",
+							""
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"resource\": {\n        \"familyName\": [\n            \"{{author_family_name_1}}\"\n        ],\n        \"givenName\": [\n            \"{{author_given_name}}\"\n        ],\n        \"biography\": [\n            \"{{author_biography}}\"\n        ],\n        \"email\": [\n            \"{{author_email}}\"\n        ],\n        \"reference\": [\n            \"{{author_reference}}\"\n        ],\n        \"furtherInformation\": [\n        \t\"{{author_furtherInformation}}\"\n        ]\n    },\n    \"label\": \"{{author_given_name}}\"\n}"
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/author",
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "get created author",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"get expected resource\", function () {",
+							"    var jsonData = pm.response.json();",
+							"",
+							"    // sanity checks",
+							"    pm.expect(jsonData.status).to.eql(0);",
+							"",
+							"    // checking values",
+							"    pm.expect(jsonData.resource.id).to.eql(pm.environment.get(\"author_id\"));",
+							"    pm.expect(jsonData.resource.familyName.shift()).to.eql(pm.environment.get(\"author_family_name_1\"));",
+							"    pm.expect(jsonData.resource.givenName.shift()).to.eql(pm.environment.get(\"author_given_name\"));",
+							"    pm.expect(jsonData.resource.biography.shift()).to.eql(pm.environment.get(\"author_biography\"));",
+							"    pm.expect(jsonData.resource.email.shift()).to.eql(pm.environment.get(\"author_email\"));",
+							"    pm.expect(jsonData.resource.reference.shift()).to.eql(pm.environment.get(\"author_reference\"));",
+							"    pm.expect(jsonData.resource.furtherInformation.shift()).to.eql(pm.environment.get(\"author_furtherInformation\"));",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/author/{{author_id}}",
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "update author",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"updated resource\", function () {",
+							"    var jsonData = pm.response.json();",
+							"",
+							"    // sanity checks",
+							"    pm.expect(jsonData.status).to.eql(0);",
+							"    pm.expect(jsonData.id).to.exist;",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": {
+						"username": "fabula@unil.ch",
+						"password": "c2B4",
+						"showPassword": false
+					}
+				},
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n        \"familyName\": [\n            \"{{author_family_name_2}}\"\n        ]\n}"
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/author/{{author_id}}",
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "get created updated author",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"get expected resource\", function () {",
+							"    var jsonData = pm.response.json();",
+							"",
+							"    // sanity checks",
+							"    pm.expect(jsonData.status).to.eql(0);",
+							"",
+							"    // checking values",
+							"    pm.expect(jsonData.resource.id).to.eql(pm.environment.get(\"author_id\"));",
+							"    pm.expect(jsonData.resource.familyName.shift()).to.eql(pm.environment.get(\"author_family_name_2\"));",
+							"    pm.expect(jsonData.resource.givenName.shift()).to.eql(pm.environment.get(\"author_given_name\"));",
+							"    pm.expect(jsonData.resource.biography.shift()).to.eql(pm.environment.get(\"author_biography\"));",
+							"    pm.expect(jsonData.resource.email.shift()).to.eql(pm.environment.get(\"author_email\"));",
+							"    pm.expect(jsonData.resource.reference.shift()).to.eql(pm.environment.get(\"author_reference\"));",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/author/{{author_id}}",
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "create notion with an author",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"var jsonData = pm.response.json();",
+							"",
+							"pm.test(\"created resource sanity check\", function () {",
+							"    pm.expect(jsonData.status).to.eql(0);",
+							"    pm.expect(jsonData.id).to.exist;",
+							"    ",
+							"    // save id for later use",
+							"    postman.setEnvironmentVariable(\"notion1_id\", jsonData.id);",
+							"});",
+							"",
+							""
+						]
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": {
+						"username": "fabula@unil.ch",
+						"password": "c2B4",
+						"showPassword": false
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"resource\": {\n        \"name\": [ \"{{notion1_name}}\" ],\n        \"definition\": [ \"{{notion1_definition}}\" ],\n        \"references\": [ \"{{notion1_references}}\" ],\n        \"author\": [ \"{{author_id}}\" ]\n    },\n    \"label\": \"{{notion1_name}}\"\n}"
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/notion",
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "get created notion",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"get expected resource\", function () {",
+							"    var jsonData = pm.response.json();",
+							"",
+							"    // sanity checks",
+							"    pm.expect(jsonData.status).to.eql(0);",
+							"",
+							"    // checking values",
+							"    pm.expect(jsonData.resource.id, 'notion id').to.eql(pm.environment.get(\"notion1_id\"));",
+							"    pm.expect(jsonData.resource.name.shift(), 'notion name').to.eql(pm.environment.get(\"notion1_name\"));",
+							"    pm.expect(jsonData.resource.definition.shift(), 'notion definition').to.eql(pm.environment.get(\"notion1_definition\"));",
+							"    pm.expect(jsonData.resource.references.shift(), 'notion references').to.eql(pm.environment.get(\"notion1_references\"));",
+							"",
+							"    // checking author values",
+							"    pm.expect(jsonData.resource.author).to.exist;",
+							"    pm.expect(jsonData.resource.author).to.not.be.empty;",
+							"",
+							"    var author = jsonData.resource.author.shift();",
+							"    ",
+							"    pm.expect(author.id, 'author id').to.eql(pm.environment.get(\"author_id\"));",
+							"    pm.expect(author.familyName.shift()).to.eql(pm.environment.get(\"author_family_name_2\"));",
+							"    pm.expect(author.givenName.shift()).to.eql(pm.environment.get(\"author_given_name\"));",
+							"    pm.expect(author.biography.shift()).to.eql(pm.environment.get(\"author_biography\"));",
+							"    pm.expect(author.email.shift()).to.eql(pm.environment.get(\"author_email\"));",
+							"    pm.expect(author.reference.shift()).to.eql(pm.environment.get(\"author_reference\"));",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/notion/{{notion1_id}}",
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "create a notion with a notion link",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"var jsonData = pm.response.json();",
+							"",
+							"pm.test(\"created resource sanity check\", function () {",
+							"    pm.expect(jsonData.status).to.eql(0);",
+							"    pm.expect(jsonData.id).to.exist;",
+							"    ",
+							"    // save id for later use",
+							"    postman.setEnvironmentVariable(\"notion2_id\", jsonData.id);",
+							"});",
+							"",
+							""
+						]
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": {
+						"username": "fabula@unil.ch",
+						"password": "c2B4",
+						"showPassword": false
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"resource\": {\n        \"name\": [ \"{{notion2_name}}\" ],\n        \"definition\": [ \"{{notion1_definition}}\" ],\n        \"parentNotion\": [ \"{{notion1_id}}\" ]\n    },\n    \"label\": \"{{notion2_name}}\"\n}"
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/notion",
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "get second created notion",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"var jsonData = pm.response.json();",
+							"",
+							"pm.test(\"get expected resource\", function () {",
+							"",
+							"    // sanity checks",
+							"    pm.expect(jsonData.status).to.eql(0);",
+							"",
+							"    // checking values",
+							"    pm.expect(jsonData.resource.id, 'notion 2 id').to.eql(pm.environment.get(\"notion2_id\"));",
+							"    pm.expect(jsonData.resource.name.shift(), 'notion 2 name').to.eql(pm.environment.get(\"notion2_name\"));",
+							"    pm.expect(jsonData.resource.definition.shift(), 'notion 2 definition (same as notion 1)').to.eql(pm.environment.get(\"notion1_definition\"));",
+							"    ",
+							"    // references was not filled",
+							"    pm.expect(jsonData.resource.references, 'notion 2 references, not filled but exists').to.exist;",
+							"    pm.expect(jsonData.resource.references, 'notion 2 references, not filled: is empty').to.be.empty;",
+							"",
+							"    // author was not filled",
+							"    pm.expect(jsonData.resource.author, 'notion 2 author, not filled but exists').to.exist;",
+							"    pm.expect(jsonData.resource.author, 'notion 2 author, not filled: is empty').to.be.empty;",
+							"});",
+							"",
+							"pm.test(\"get expected resource's parent notion\", function () {",
+							"",
+							"    // checking parent notion exists",
+							"    pm.expect(jsonData.resource.parentNotion, 'notion 2 parent notion, should exists').to.exist;",
+							"    pm.expect(jsonData.resource.parentNotion, 'notion 2 parent notion, should not be empty').to.not.be.empty;",
+							"",
+							"    // get the parent notion",
+							"    var parent = jsonData.resource.parentNotion.shift();",
+							"    ",
+							"    // same check parent notion",
+							"    pm.expect(parent.id, 'parent notion id').to.eql(pm.environment.get(\"notion1_id\"));",
+							"    pm.expect(parent.name.shift(), 'parent notion name').to.eql(pm.environment.get(\"notion1_name\"));",
+							"    pm.expect(parent.definition.shift(), 'parent notion definition').to.eql(pm.environment.get(\"notion1_definition\"));",
+							"    pm.expect(parent.references.shift(), 'parent notion references').to.eql(pm.environment.get(\"notion1_references\"));",
+							"",
+							"    // checking parent notion author values",
+							"    pm.expect(parent.author, 'parent notion references').to.exist;",
+							"    pm.expect(parent.author, 'parent notion references').to.not.be.empty;",
+							"",
+							"    var parent_author = parent.author.shift();",
+							"    ",
+							"    // parent is there but not dereferenced to avoid loops",
+							"    pm.expect(parent_author.id, 'parent author id').to.eql(pm.environment.get(\"author_id\"));",
+							"    pm.expect(parent_author.familyName).to.not.exist;",
+							"    pm.expect(parent_author.givenName).to.not.exist;",
+							"    pm.expect(parent_author.biography).to.not.exist;",
+							"    pm.expect(parent_author.email).to.not.exist;",
+							"    pm.expect(parent_author.reference).to.not.exist;",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/notion/{{notion2_id}}",
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "update second notion to make a cycle link",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"updated resource\", function () {",
+							"    var jsonData = pm.response.json();",
+							"",
+							"    // sanity checks",
+							"    pm.expect(jsonData.status).to.eql(0);",
+							"    pm.expect(jsonData.id).to.exist;",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": {
+						"username": "fabula@unil.ch",
+						"password": "c2B4",
+						"showPassword": false
+					}
+				},
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n        \"parentNotion\": [\n            \"{{notion2_id}}\"\n        ]\n}"
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/notion/{{notion2_id}}",
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "get second notion updated",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"var jsonData = pm.response.json();",
+							"",
+							"pm.test(\"get expected resource\", function () {",
+							"",
+							"    // sanity checks",
+							"    pm.expect(jsonData.status).to.eql(0);",
+							"",
+							"    // checking values",
+							"    pm.expect(jsonData.resource.id, 'notion 2 id').to.eql(pm.environment.get(\"notion2_id\"));",
+							"    pm.expect(jsonData.resource.name.shift(), 'notion 2 name').to.eql(pm.environment.get(\"notion2_name\"));",
+							"    pm.expect(jsonData.resource.definition.shift(), 'notion 2 definition (same as notion 1)').to.eql(pm.environment.get(\"notion1_definition\"));",
+							"    ",
+							"    // references was not filled",
+							"    pm.expect(jsonData.resource.references, 'notion 2 references, not filled but exists').to.exist;",
+							"    pm.expect(jsonData.resource.references, 'notion 2 references, not filled: is empty').to.be.empty;",
+							"",
+							"    // author was not filled",
+							"    pm.expect(jsonData.resource.author, 'notion 2 author, not filled but exists').to.exist;",
+							"    pm.expect(jsonData.resource.author, 'notion 2 author, not filled: is empty').to.be.empty;",
+							"});",
+							"",
+							"pm.test(\"get expected resource's parent notion\", function () {",
+							"",
+							"    // checking parent notion exists",
+							"    pm.expect(jsonData.resource.parentNotion, 'notion 2 parent notion, should exists').to.exist;",
+							"    pm.expect(jsonData.resource.parentNotion, 'notion 2 parent notion, should not be empty').to.not.be.empty;",
+							"",
+							"    // get the parent notion",
+							"    var parent = jsonData.resource.parentNotion.shift();",
+							"    ",
+							"    // same check parent notion",
+							"    pm.expect(parent.id, 'parent notion id, link to ourself').to.eql(pm.environment.get(\"notion2_id\"));",
+							"",
+							"    // checking grand parent (parent notion's parent notion)",
+							"    // checking grand parent notion exists",
+							"    pm.expect(parent.parentNotion, 'notion 2 grand parent notion, should exists').to.exist;",
+							"    pm.expect(parent.parentNotion, 'notion 2 grand parent notion, should not be empty').to.not.be.empty;",
+							"",
+							"    // get the parent notion",
+							"    var grand_parent = parent.parentNotion.shift();",
+							"    ",
+							"    // grand parent is there but not dereferenced to avoid loops",
+							"    pm.expect(grand_parent.id, 'grand parent notion id, link to ourself').to.eql(pm.environment.get(\"notion2_id\"));",
+							"    pm.expect(grand_parent.name).to.not.exist;",
+							"    pm.expect(grand_parent.definition).to.not.exist;",
+							"",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/notion/{{notion2_id}}",
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "logout",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {},
+				"url": "https://salsah-test.unil.ch:8455/session/logout",
+				"description": ""
+			},
+			"response": []
+		}
+	]
+}
