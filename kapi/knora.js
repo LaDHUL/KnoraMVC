@@ -246,6 +246,7 @@ Knora.prototype.knora_request = function (args) {
                 // find the data type : "text"
 
 				let propertyType;
+				let valueTypeId;
                 if (propertyName.constructor === Array) {
 					/*
                 	this is a link to another resource
@@ -269,9 +270,10 @@ Knora.prototype.knora_request = function (args) {
 					propertyType = "link";
 				} else {
                     propertyType = knora.resource_types[model.id][propertyName].gui_name;
+                    valueTypeId = knora.resource_types[model.id][propertyName].valuetype_id;
 				}
 
-				let formatter = knora.util.knora_get_formatter(propertyType);
+				let formatter = knora.util.knora_get_formatter(propertyType, valueTypeId);
 
                 if (id) {
                 	// values is a single value
@@ -333,6 +335,7 @@ Knora.prototype.knora_request = function (args) {
                     });
 				}
 				let propertyType;
+                let valueTypeId;
                 if (propertyName.constructor === Array) {
                     // link data
                     propertyName = propertyName[0];
@@ -349,7 +352,10 @@ Knora.prototype.knora_request = function (args) {
 					}
                 } else {
                     propertyType = knora.resource_types[model.id][propertyName].gui_name;
+                    valueTypeId = knora.resource_types[model.id][propertyName].valuetype_id;
 				}
+
+                let formatter = knora.util.knora_get_formatter(propertyType, valueTypeId);
 
 				// find the value's UUID
 				logdebug("looking for value UUID in %o", previousResult.props);
@@ -395,34 +401,10 @@ Knora.prototype.knora_request = function (args) {
                     logdebug("resource_type model prop: %o", knora.resource_types[model.id][propertyName]);
                     let outValues = {};
                     //logdebug("resource_type proptype: %o", propertyType);
-                    switch (propertyType) {
-                        case 'text':
-                            _.forEach(values, function (value) {
-                                outValues.richtext_value = {"utf8str": value};
-                            });
-                            break;
-
-                        case 'link':
-                            _.forEach(values, function (value) {
-                                outValues.link_value = knora.util.longIri("atelier-fabula", value);
-                            });
-                            break;
-
-                        case 'richtext':
-                            _.forEach(values, function (value) {
-                                // xml-ify the value
-                                let xmlified = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + value;
-                                let request = {
-                                    "xml": xmlified,
-                                    "mapping_id": "http://data.knora.org/projects/standoff/mappings/StandardMapping"
-                                };
-                                logdebug("richtext xmlified: %o", request);
-                                outValues.richtext_value = request;
-
-                            });
-                            break;
-
-                    }
+                _.forEach(values, function (value) {
+                    logdebug("value: %o", value);
+                    formatter(value, "atelier-fabula", outValues);
+                });
                     logdebug("filled out values: %o", outValues);
                     options.body = outValues;
 			});
@@ -630,6 +612,7 @@ Knora.prototype.knora_request = function (args) {
                             //	...;
                             //	break;
 
+
                             // link
                             case "http://www.knora.org/ontology/knora-base#LinkValue":
                                 let linkedOptions = _.clone(options);
@@ -641,6 +624,16 @@ Knora.prototype.knora_request = function (args) {
                                     subrequests.push(knora.knora_request({options: linkedOptions, model: linkedModel, depth: (depth-1)}));
                                     anchors.push(key);
                                 }
+                                break;
+
+                            case "http://www.knora.org/ontology/knora-base#UriValue":
+                            case "http://www.knora.org/ontology/knora-base#DateValue":
+                            default:
+                                _.forEach(toReturn.props[value].values, function (item) {
+                                    logdebug("  default formatting, key: %o, value: %o", key, item);
+                                    toReturn.resource[key].push(item);
+                                });
+                                break;
                         }
                     } /* else: the value is empty, do nothing */
 				} else {

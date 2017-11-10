@@ -21,16 +21,23 @@ function Util() {
  * @param propertyType
  * @returns {*}
  */
-Util.prototype.knora_get_formatter = function (propertyType) {
+Util.prototype.knora_get_formatter = function (propertyType, valueTypeId) {
     // add closure here because we pass a function back
     // and that function will be later called outside of this scope
     let here = this;
     switch (propertyType) {
         case 'text':
-            return function(value, project, base) {
-                base["richtext_value"] = {"utf8str": value};
-                return base;
-            };
+            if (valueTypeId.endsWith("UriValue")) {
+                return function (value, project, base) {
+                    base["uri_value"] = value;
+                    return base;
+                };
+            } else {
+                return function (value, project, base) {
+                    base["richtext_value"] = {"utf8str": value};
+                    return base;
+                };
+            }
         case 'link':
         	return function(value, project, base) {
                 base["link_value"] = here.longIri(project, value);
@@ -44,7 +51,13 @@ Util.prototype.knora_get_formatter = function (propertyType) {
                     "mapping_id": "http://data.knora.org/projects/standoff/mappings/StandardMapping"
                 };
                 return base;
-            }
+            };
+        case 'date':
+            return function (value, project, base) {
+                base["date_value"] = value;
+                return base;
+            };
+
     }
 };
 
