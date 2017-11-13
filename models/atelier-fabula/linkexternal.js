@@ -2,7 +2,7 @@
  * Link Model
  */
  
-const author = require("./author.js");
+//const author = require("./author.js");
 
 module.exports = {
     'model': {
@@ -10,7 +10,9 @@ module.exports = {
             'id': 'http://www.knora.org/ontology/0108#LinkExternal',
             'properties': {
                 'url': 'http://www.knora.org/ontology/0108#hasUrl',
-                'author': ['http://www.knora.org/ontology/0108#linkHasAuthor', author.model.author],
+                // Note: implementation: linkexternal's author is added alonside with author to avoid circular requires
+                //       see: https://nodejs.org/api/modules.html#modules_cycles
+                //'author': ['http://www.knora.org/ontology/0108#linkHasAuthor', author.model.author],
             }
         }
     }
