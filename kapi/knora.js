@@ -236,7 +236,13 @@ Knora.prototype.knora_request = function (args) {
 
 				// resourceKey : "familyName", match with model
 				// propertyName : "http://www.knora.org/ontology/0108#hasFamilyName"
+                logdebug("model: %o, resourceKey: %o", model, resourceKey);
 				let propertyName = model.properties[resourceKey];
+				if (!propertyName) {
+					logdebug("dynamically loading: %s", resourceKey);
+                    require('./../models/'+ 'atelier-fabula' +'/'+ resourceKey);
+                    propertyName = model.properties[resourceKey];
+				}
 
                 logdebug("model.id: %o, resourceKey: %o, propertyName: %o", model.id, resourceKey, propertyName);
                 //logdebug("resource_types: %o", knora.resource_types);
