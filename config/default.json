@@ -15,7 +15,9 @@
       "other": 999
     },
     "project" : {
-      "atelier-fabula" : "http://data.knora.org/projects/0108",
+      "prefix" : "http://data.knora.org/projects/",
+      /*-- values --*/
+      "atelier-fabula" : "0108",
       "anything" : "0001"
     }
   }
