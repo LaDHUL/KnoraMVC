@@ -85,4 +85,21 @@ router.put('/:project/:model/:iri', function(req, res, next) {
 	knora.api_request(options, req, res, model.model[req.params.model], next);
 });
 
+router.delete('/:project/:model/:iri', function(req, res, next) {
+    var url = knora.util.getUrl("resources", req.params.project, req.params.iri);
+    // TODO: set the project
+    var options = {
+        method: 'DELETE',
+        url: url,
+    };
+
+    logdebug('delete data: %o', req.body);
+    let model = require('./../models/'+ req.params.project +'/'+ req.params.model);
+    logdebug('sending resource request with options %o', options);
+    logdebug('models: %o', model);
+    logdebug('model: %o', model.model[req.params.model]);
+
+    knora.api_request(options, req, res, model.model[req.params.model], next);
+});
+
 module.exports = router;

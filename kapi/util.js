@@ -39,11 +39,11 @@ Util.prototype.knora_get_formatter = function (propertyType, valueTypeId) {
                 };
             }
         case 'link':
-        	return function(value, project, base) {
+            return function(value, project, base) {
                 base["link_value"] = here.longIri(project, value);
                 return base;
             };
-		case 'richtext':
+        case 'richtext':
             return function(value, project, base) {
                 let xmlified = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + value;
                 base["richtext_value"] = {
@@ -56,6 +56,42 @@ Util.prototype.knora_get_formatter = function (propertyType, valueTypeId) {
             return function (value, project, base) {
                 base["date_value"] = value;
                 return base;
+            };
+
+    }
+};
+
+Util.prototype.knora_get_comparator = function (propertyType, valueTypeId) {
+    // add closure here because we pass a function back
+    // and that function will be later called outside of this scope
+    let here = this;
+    switch (propertyType) {
+        case 'text':
+            if (valueTypeId.endsWith("UriValue")) {
+                return function (a, b) {
+                    return a && a.uri_value && a.uri_value === b.uri_value;
+                };
+            } else {
+                return function (a, b) {
+                    base["richtext_value"] = {"utf8str": value};
+                    return a && a.richtext_value && a.richtext_value.utf8str && a.richtext_value.utf8str === b.richtext_value.utf8str;
+                };
+            }
+        case 'link':
+        	return function(a, b) {
+                base["link_value"] = here.longIri(project, value);
+                return a && a.link_value && a.link_value === b.link_value;
+            };
+		case 'richtext':
+            return function(a, b) {
+                if (!(a && a.richtext_value && b && b.richtext_value))
+                    return false;
+
+                return a.richtext_value.xml === b.richtext_value.xml && a.richtext_value.mapping_id === b.richtext_value.mapping_id;
+            };
+        case 'date':
+            return function (a, b) {
+                return a && a.date_value && a.date_value === b.date_value;
             };
 
     }
@@ -91,8 +127,24 @@ Util.prototype.shortIri = function (url) {
 };
 
 Util.prototype.longIri = function (project, iri) {
-	return "http://rdfh.ch/"+ project + "/" + iri;
+    return "http://rdfh.ch/"+ project + "/" + iri;
 };
 
+Util.prototype.longValueIri = function (project, iri, value_iri) {
+    return "http://rdfh.ch/"+ project + "/" + iri + "/values/" + value_iri;
+};
+
+/**
+ *
+ * @param projectShortName
+ * @returns {*}
+ */
+Util.prototype.projectCode = function (projectShortName) {
+    return this.configKnora.project[projectShortName];
+};
+
+Util.prototype.projectCodeUrl = function (projectShortName) {
+    return this.configKnora.project.prefix + this.projectCode(projectShortName);
+};
 
 module.exports = Util;
