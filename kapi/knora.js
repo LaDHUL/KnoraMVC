@@ -533,7 +533,7 @@ Knora.prototype.knora_request = function (args) {
 				toReturn.found = [];
 				_.forEach(parsedBody.subjects, function(element) {
 					toReturn.found.push({
-						id : knora.shortIri(element.obj_id),
+						id : knora.util.shortIri(element.obj_id),
 						label : element.value.pop()
 					})
 				});
@@ -804,17 +804,20 @@ Knora.prototype.search = function (search, req, res) {
 
 Knora.prototype.api_search_by_type = function (project, model, req, res) {
 	// http://localhost:3333/v1/search/?searchtype=extended&show_nrows=25&start_at=0&filter_by_restype=http://www.knora.org/ontology/0108#Article&filter_by_project=http://data.knora.org/projects/0108
+    let knora = this;
 	let options = {
 		method: 'GET',
 	};
+	logdebug("project: %o, model: %o", project, model);
 	options.url = this.util.baseUrl + "search/?searchtype=extended&show_nrows=5&start_at=0";
 	if (model) {
 		options.url += "&filter_by_restype=" + qs.escape(model.id);
 	}
 	if (project) {
-		options.url += "&filter_by_project=" + qs.escape(project);
+		options.url += "&filter_by_project=" + qs.escape(knora.util.projectCodeUrl(project));
 	}
 
+    logdebug("request: %o", options);
 	this.api_request(options, req, res, model);
 };
 
