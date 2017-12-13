@@ -563,6 +563,8 @@ Knora.prototype.knora_request = function (args) {
 			toReturn.resource = {};
             toReturn.resource.id = knora.util.shortIri(toReturn.resdata.res_id);
 
+            toReturn.resource.label = toReturn.resinfo.firstproperty;
+
 			// iterate over the properties of the model
 			_.forEach(model.properties, function (value, key) {
 				// key   : title
