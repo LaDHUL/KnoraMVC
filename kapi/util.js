@@ -48,7 +48,7 @@ Util.prototype.knora_get_formatter = function (propertyType, valueTypeId) {
                 let xmlified = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + value;
                 base["richtext_value"] = {
                     "xml": xmlified,
-                    "mapping_id": "http://data.knora.org/projects/standoff/mappings/StandardMapping"
+                    "mapping_id": "http://rdfh.ch/standoff/mappings/StandardMapping"
                 };
                 return base;
             };
@@ -114,7 +114,7 @@ Util.prototype.getUrlIri = function (command, iri) {
 };
 
 Util.prototype.getUrl = function (command, project, iri) {
-	return this.baseUrl + command + "/" + qs.escape("http://rdfh.ch/" + project + "/" + iri);
+	return this.baseUrl + command + "/" + qs.escape(this.longIri(project, iri));
 };
 
 Util.prototype.shortIriEscaped = function (url) {
@@ -127,11 +127,11 @@ Util.prototype.shortIri = function (url) {
 };
 
 Util.prototype.longIri = function (project, iri) {
-    return "http://rdfh.ch/"+ project + "/" + iri;
+    return "http://rdfh.ch/"+ this.projectCode(project) + "/" + project + "/" + iri;
 };
 
 Util.prototype.longValueIri = function (project, iri, value_iri) {
-    return "http://rdfh.ch/"+ project + "/" + iri + "/values/" + value_iri;
+    return this.longIri(project, iri) + "/values/" + value_iri;
 };
 
 /**
