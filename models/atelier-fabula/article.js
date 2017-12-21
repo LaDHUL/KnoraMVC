@@ -13,23 +13,23 @@ var notion = require("./notion.js");
 module.exports = {
 	'model': {
 		'article': {
-			'id': 'http://www.knora.org/ontology/0108#Article',
+			'id': 'http://www.knora.org/ontology/0108/atelier-fabula/atelier-fabula#Article',
 			'properties': {
-				'title': 'http://www.knora.org/ontology/0108#articleHasTitle',
-				'subtitle': 'http://www.knora.org/ontology/0108#hasSubtitle',
-                'introduction': 'http://www.knora.org/ontology/0108#hasIntroduction',
-				'author': ['http://www.knora.org/ontology/0108#articleHasAuthor', author.model.author],
-                'bodytext': 'http://www.knora.org/ontology/0108#hasBodyText',
-                'references': 'http://www.knora.org/ontology/0108#articleHasReferences',
-	            'affiliation' : [ 'http://www.knora.org/ontology/0108#articleHasAffiliation', institution.model.institution ],
-                'notions' : [ 'http://www.knora.org/ontology/0108#articleHasTopicNotion', notion.model.notion ],
-//            'keywords' : [ 'http://www.knora.org/ontology/0108#hasTopicKeyword', keyword.model.keyword ],
-				'firstpublication': 'http://www.knora.org/ontology/0108#articleHasPublicationDateOriginal',
-				'onlinepublication': 'http://www.knora.org/ontology/0108#articleHasPublicationDateOnline',
-                'collection' : [ 'http://www.knora.org/ontology/0108#isInArticleCollection', collection.model.collection ],
-//            'image' : [ 'http://www.knora.org/ontology/0108#articleHasImage', image.model.image ],
-//            'structuredref' : [ 'http://www.knora.org/ontology/0108#articleHasStructuredReferences', structuredreferences.model.structuredreferences ],
-//            'link' : [ 'http://www.knora.org/ontology/0108#articleHasLink', link.model.link ]
+				'title': 'http://www.knora.org/ontology/0108/atelier-fabula/atelier-fabula#articleHasTitle',
+				'subtitle': 'http://www.knora.org/ontology/0108/atelier-fabula/atelier-fabula#hasSubtitle',
+                'introduction': 'http://www.knora.org/ontology/0108/atelier-fabula/atelier-fabula#hasIntroduction',
+				'author': ['http://www.knora.org/ontology/0108/atelier-fabula/atelier-fabula#articleHasAuthor', author.model.author],
+                'bodytext': 'http://www.knora.org/ontology/0108/atelier-fabula/atelier-fabula#hasBodyText',
+                'references': 'http://www.knora.org/ontology/0108/atelier-fabula/atelier-fabula#articleHasReferences',
+	            'affiliation' : [ 'http://www.knora.org/ontology/0108/atelier-fabula/atelier-fabula#articleHasAffiliation', institution.model.institution ],
+                'notions' : [ 'http://www.knora.org/ontology/0108/atelier-fabula/atelier-fabula#articleHasTopicNotion', notion.model.notion ],
+//            'keywords' : [ 'http://www.knora.org/ontology/0108/atelier-fabula/atelier-fabula#hasTopicKeyword', keyword.model.keyword ],
+				'firstpublication': 'http://www.knora.org/ontology/0108/atelier-fabula/atelier-fabula#articleHasPublicationDateOriginal',
+				'onlinepublication': 'http://www.knora.org/ontology/0108/atelier-fabula/atelier-fabula#articleHasPublicationDateOnline',
+                'collection' : [ 'http://www.knora.org/ontology/0108/atelier-fabula/atelier-fabula#isInArticleCollection', collection.model.collection ],
+//            'image' : [ 'http://www.knora.org/ontology/0108/atelier-fabula/atelier-fabula#articleHasImage', image.model.image ],
+//            'structuredref' : [ 'http://www.knora.org/ontology/0108/atelier-fabula/atelier-fabula#articleHasStructuredReferences', structuredreferences.model.structuredreferences ],
+//            'link' : [ 'http://www.knora.org/ontology/0108/atelier-fabula/atelier-fabula#articleHasLink', link.model.link ]
 			}
 		}
 	}

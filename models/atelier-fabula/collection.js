@@ -9,15 +9,15 @@ const link = require("./link.js");
 module.exports = {
     'model': {
         'collection': {
-            'id': 'http://www.knora.org/ontology/0108#ArticleCollection',
+            'id': 'http://www.knora.org/ontology/0108/atelier-fabula#ArticleCollection',
             'properties': {
-                'note': 'http://www.knora.org/ontology/0108#hasNote',
-                'title': 'http://www.knora.org/ontology/0108#collectionHasTitle',
-                'notion': ['http://www.knora.org/ontology/0108#collectionHasTopicNotion', notion.model.notion],
-                'author': ['http://www.knora.org/ontology/0108#collectionHasAuthor', author.model.author],
-                'firstpublication': 'http://www.knora.org/ontology/0108#collectionHasPublicationDateOriginal',
-                'onlinepublication': 'http://www.knora.org/ontology/0108#collectionHasPublicationDateOnline',
-                'link': ['http://www.knora.org/ontology/0108#collectionHasLink', link.model.link],
+                'note': 'http://www.knora.org/ontology/0108/atelier-fabula#hasNote',
+                'title': 'http://www.knora.org/ontology/0108/atelier-fabula#collectionHasTitle',
+                'notion': ['http://www.knora.org/ontology/0108/atelier-fabula#collectionHasTopicNotion', notion.model.notion],
+                'author': ['http://www.knora.org/ontology/0108/atelier-fabula#collectionHasAuthor', author.model.author],
+                'firstpublication': 'http://www.knora.org/ontology/0108/atelier-fabula#collectionHasPublicationDateOriginal',
+                'onlinepublication': 'http://www.knora.org/ontology/0108/atelier-fabula#collectionHasPublicationDateOnline',
+                'link': ['http://www.knora.org/ontology/0108/atelier-fabula#collectionHasLink', link.model.link],
             }
         }
     }

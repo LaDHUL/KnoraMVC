@@ -15,7 +15,7 @@
       "other": 999
     },
     "project" : {
-      "prefix" : "http://data.knora.org/projects/",
+      "prefix" : "http://rdfh.ch/projects/",
       /*-- values --*/
       "atelier-fabula" : "0108",
       "anything" : "0001"
