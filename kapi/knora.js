@@ -342,70 +342,82 @@ Knora.prototype.knora_request = function (args) {
             logdebug("previous result: %o", previousResult);
             logdebug("previous props: %o", previousResult.resource);
 
-            // look for the property description
-            let resourceKey; // we look for 'url'
-            _.forEach(previousResult.resource, function (value, key) {
-                /* previousResult.resource = full object:
-                { id: 'k2VAPw0mR0240Y_7JEKo7A', url: [ { id: 'SuGob10MTVOXGPJSravAPg', value: 'http://salsah.unil.ch/' } ], ...
-                 */
-                if (Array.isArray(value)) {             // skip what's is not a value, like resource id
-                    for (let i = 0; i < value.length; i++) { // iterate over values
-                        let item = value[i];            // item = { id: 'SuGob10MTVOXGPJSravAPg', value: 'http://salsah.unil.ch/' }
-                        if (item.id === data.id) {      // found it
-                            resourceKey = key;
-                            return false;               // break
+            // short cut for label
+            if (data.id === "label") {
+                options.url = knora.util.getUrlIri("resources/label", knora.util.longIri(project, id));
+
+                options.body = { "label": data.value };
+
+                options.json = true;
+            }
+            // regular case
+            else {
+
+                // look for the property description
+                let resourceKey; // we look for 'url'
+                _.forEach(previousResult.resource, function (value, key) {
+                    /* previousResult.resource = full object:
+                    { id: 'k2VAPw0mR0240Y_7JEKo7A', url: [ { id: 'SuGob10MTVOXGPJSravAPg', value: 'http://salsah.unil.ch/' } ], ...
+                     */
+                    if (Array.isArray(value)) {             // skip what's is not a value, like resource id
+                        for (let i = 0; i < value.length; i++) { // iterate over values
+                            let item = value[i];            // item = { id: 'SuGob10MTVOXGPJSravAPg', value: 'http://salsah.unil.ch/' }
+                            if (item.id === data.id) {      // found it
+                                resourceKey = key;
+                                return false;               // break
+                            }
                         }
                     }
+                });
+
+                // not found
+                if (!resourceKey) {
+                    reject({
+                        "status": 999,
+                        "message": "could not find property for id: " + data.id
+                    });
                 }
-            });
 
-            // not found
-            if (!resourceKey) {
-                reject({
-                    "status": 999,
-                    "message": "could not find property for id: " + data.id
-                });
+                // look for propertyName : "http://www.knora.org/ontology/0108#hasUrl"
+                let propertyName = model.properties[resourceKey];
+                if (!propertyName) {
+                    reject({
+                        "status": 999,
+                        "message": "could not find property for: " + resourceKey
+                    });
+                }
+
+                logdebug("put: resourceKey: %o, propertyName: %o", resourceKey, propertyName);
+
+                // get formatter
+                let propertyType; // text
+                let valueTypeId; // http://www.knora.org/ontology/0108#Author
+                if (Array.isArray(propertyName)) {
+                    // link data
+                    propertyName = propertyName[0];
+                    propertyType = "link";
+                } else {
+                    propertyType = knora.resource_types[model.id][propertyName].gui_name;
+                    valueTypeId = knora.resource_types[model.id][propertyName].valuetype_id;
+                }
+
+                // format the output
+                let formatter = knora.util.knora_get_formatter(propertyType, valueTypeId);
+                let outValues = {};
+                formatter(data.value, project, outValues);
+                options.body = outValues;
+
+                // work out the iri
+                let value_iri = knora.util.longValueIri(project, id, data.id);
+                logdebug("data: %o, iri: %o, formatted: %o", data, value_iri, outValues);
+
+                options.url = knora.util.getUrlIri("values", value_iri);
+
+                options.body.project_id = knora.util.projectCodeUrl(project);
+
+                options.json = true;
             }
-
-            // look for propertyName : "http://www.knora.org/ontology/0108#hasUrl"
-            let propertyName = model.properties[resourceKey];
-            if (!propertyName) {
-                reject({
-                    "status": 999,
-                    "message": "could not find property for: " + resourceKey
-                });
-            }
-
-            logdebug("put: resourceKey: %o, propertyName: %o", resourceKey, propertyName);
-
-            // get formatter
-            let propertyType; // text
-            let valueTypeId; // http://www.knora.org/ontology/0108#Author
-            if (Array.isArray(propertyName)) {
-                // link data
-                propertyName = propertyName[0];
-                propertyType = "link";
-            } else {
-                propertyType = knora.resource_types[model.id][propertyName].gui_name;
-                valueTypeId = knora.resource_types[model.id][propertyName].valuetype_id;
-            }
-
-            // format the output
-			let formatter = knora.util.knora_get_formatter(propertyType, valueTypeId);
-            let outValues = {};
-            formatter(data.value, project, outValues);
-            options.body = outValues;
-
-            // work out the iri
-            let value_iri = knora.util.longValueIri(project, id, data.id);
-            logdebug("data: %o, iri: %o, formatted: %o", data, value_iri, outValues);
-
-			options.url = knora.util.getUrlIri("values", value_iri);
-
-            options.body.project_id = knora.util.projectCodeUrl(project);
-
-			options.json = true;
-		}
+        }
 
 		logdebug('request options: %o', options);
 		request(options, function (error, response, body) {

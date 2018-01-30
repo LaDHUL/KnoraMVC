@@ -1,8 +1,7 @@
 {
-	"variables": [],
 	"info": {
-		"name": "knoramvc-test-suite",
-		"_postman_id": "2cad09fd-aad4-6d0c-652f-33f976a7c4ef",
+		"name": "knoramvc-test-suite copy",
+		"_postman_id": "4fa5bdd8-14b9-d9ce-c6b8-71a67cfa0775",
 		"description": "",
 		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
 	},
@@ -34,9 +33,11 @@
 				},
 				"method": "POST",
 				"header": [],
-				"body": {},
-				"url": "https://{{server}}:{{port}}/session/login",
-				"description": ""
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": "https://{{server}}:{{port}}/session/login"
 			},
 			"response": []
 		},
@@ -86,8 +87,7 @@
 					"mode": "raw",
 					"raw": "{\n    \"resource\": {\n        \"name\": [ \"{{institution_name}}\" ],\n        \"altname\": [ \"{{institution_alt_name}}\" ]\n    },\n    \"label\": \"{{institution_label}}\"\n}"
 				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/institution",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/institution"
 			},
 			"response": []
 		},
@@ -97,6 +97,7 @@
 				{
 					"listen": "test",
 					"script": {
+						"id": "2391e47c-8320-462e-8e78-9e82f71183e0",
 						"type": "text/javascript",
 						"exec": [
 							"pm.test(\"Status code is 200\", function () {",
@@ -111,6 +112,7 @@
 							"",
 							"    // checking values",
 							"    pm.expect(jsonData.resource.id).to.eql(pm.environment.get(\"institution_id\"));",
+							"    pm.expect(jsonData.resource.label).to.eql(pm.environment.get(\"institution_label\"))",
 							"    pm.expect(jsonData.resource.name.shift().value).to.eql(pm.environment.get(\"institution_name\"));",
 							"    pm.expect(jsonData.resource.altname.shift().value).to.eql(pm.environment.get(\"institution_alt_name\"));",
 							"});"
@@ -122,8 +124,87 @@
 				"method": "GET",
 				"header": [],
 				"body": {},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/institution/{{institution_id}}",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/institution/{{institution_id}}"
+			},
+			"response": []
+		},
+		{
+			"name": "update the label",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"var jsonData = pm.response.json();",
+							"",
+							"pm.test(\"created resource sanity check\", function () {",
+							"    pm.expect(jsonData.status).to.eql(0);",
+							"    pm.expect(jsonData.id).to.exist;",
+							"    ",
+							"    // save id for later use",
+							"    postman.setEnvironmentVariable(\"author_id\", jsonData.id);",
+							"});",
+							"",
+							""
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"id\": \"label\",\n    \"value\": \"{{institution_label_edited}}\"\n}"
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/author/{{institution_id}}"
+			},
+			"response": []
+		},
+		{
+			"name": "get edited institution",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "2f524ea9-bf3a-4557-99bb-1f6e65929cfc",
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"get expected resource\", function () {",
+							"    var jsonData = pm.response.json();",
+							"",
+							"    // sanity checks",
+							"    pm.expect(jsonData.status).to.eql(0);",
+							"",
+							"    // checking values",
+							"    pm.expect(jsonData.resource.id).to.eql(pm.environment.get(\"institution_id\"));",
+							"    pm.expect(jsonData.resource.label).to.eql(pm.environment.get(\"institution_label_edited\"))",
+							"    pm.expect(jsonData.resource.name.shift().value).to.eql(pm.environment.get(\"institution_name\"));",
+							"    pm.expect(jsonData.resource.altname.shift().value).to.eql(pm.environment.get(\"institution_alt_name\"));",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/institution/{{institution_id}}"
 			},
 			"response": []
 		},
@@ -166,8 +247,7 @@
 					"mode": "raw",
 					"raw": "{\n    \"resource\": {\n        \"familyName\": [\n            \"{{author_family_name_1}}\"\n        ],\n        \"givenName\": [\n            \"{{author_given_name}}\"\n        ],\n        \"biography\": [\n            \"{{author_biography}}\"\n        ],\n        \"email\": [\n            \"{{author_email}}\"\n        ],\n        \"reference\": [\n            \"{{author_reference}}\"\n        ],\n        \"furtherInformation\": [\n        \t\"{{author_furtherInformation}}\"\n        ]\n    },\n    \"label\": \"{{author_given_name}}\"\n}"
 				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/author",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/author"
 			},
 			"response": []
 		},
@@ -206,9 +286,11 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"body": {},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/author/{{author_id}}",
-				"description": ""
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/author/{{author_id}}"
 			},
 			"response": []
 		},
@@ -258,8 +340,7 @@
 					"mode": "raw",
 					"raw": "{\n    \"resource\": {\n        \"url\": [ \"{{link_url}}\" ]\n    },\n    \"label\": \"{{link_url}}\"\n}"
 				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal"
 			},
 			"response": []
 		},
@@ -292,9 +373,11 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"body": {},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal_id}}",
-				"description": ""
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal_id}}"
 			},
 			"response": []
 		},
@@ -341,8 +424,7 @@
 					"mode": "raw",
 					"raw": "{\n\t \"resource\": {\n        \"author\": [\n            \"{{author_id}}\"\n        ]\n\t }\n}"
 				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal_id}}",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal_id}}"
 			},
 			"response": []
 		},
@@ -394,9 +476,11 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"body": {},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal_id}}",
-				"description": ""
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal_id}}"
 			},
 			"response": []
 		},
@@ -439,8 +523,7 @@
 					"mode": "raw",
 					"raw": "{\n    \"resource\": {\n        \"familyName\": [\n            \"{{author_family_name_1}}\"\n        ],\n        \"givenName\": [\n            \"{{author_given_name}}\"\n        ],\n        \"biography\": [\n            \"{{author_biography}}\"\n        ],\n        \"email\": [\n            \"{{author_email}}\"\n        ],\n        \"reference\": [\n            \"{{author_reference}}\"\n        ],\n        \"furtherInformation\": [\n        \t\"{{author_furtherInformation}}\"\n        ]\n    },\n    \"label\": \"{{author_given_name}}\"\n}"
 				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/author",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/author"
 			},
 			"response": []
 		},
@@ -487,8 +570,7 @@
 					"mode": "raw",
 					"raw": "{\n\t\"id\": \"{{linkexternal_author_id}}\",\n\t\"value\": \"{{author2_id}}\"\n}\n"
 				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal_id}}",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal_id}}"
 			},
 			"response": []
 		},
@@ -533,9 +615,11 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"body": {},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal_id}}",
-				"description": ""
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal_id}}"
 			},
 			"response": []
 		},
@@ -582,8 +666,7 @@
 					"mode": "raw",
 					"raw": "{\n\t\"id\": \"{{linkexternal_url_id}}\",\n\t\"value\": \"{{link_url2}}\"\n}\n"
 				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal_id}}",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal_id}}"
 			},
 			"response": []
 		},
@@ -628,9 +711,11 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"body": {},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal_id}}",
-				"description": ""
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal_id}}"
 			},
 			"response": []
 		},
@@ -680,8 +765,7 @@
 					"mode": "raw",
 					"raw": "{\n    \"resource\": {\n        \"url\": [ \"{{link_url}}\" ],\n        \"author\": [ \"{{author_id}}\" ]\n    },\n    \"label\": \"{{link_url}}\"\n}"
 				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal"
 			},
 			"response": []
 		},
@@ -719,9 +803,11 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"body": {},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal_id}}",
-				"description": ""
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal_id}}"
 			},
 			"response": []
 		},
@@ -771,8 +857,7 @@
 					"mode": "raw",
 					"raw": "{\n    \"resource\": {\n        \"url\": [ \"{{link_url}}\" ],\n        \"author\": [ \"{{author_id}}\", \"{{author2_id}}\" ]\n    },\n    \"label\": \"{{link_url}}\"\n}"
 				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal"
 			},
 			"response": []
 		},
@@ -825,9 +910,11 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"body": {},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal2_id}}",
-				"description": ""
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal2_id}}"
 			},
 			"response": []
 		},
@@ -874,8 +961,7 @@
 					"mode": "raw",
 					"raw": "{\n\t\"id\": \"{{linkexternal2_url_id}}\",\n\t    \"label\": \"{{link_url}}\"\n\n}"
 				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal2_id}}",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal2_id}}"
 			},
 			"response": []
 		},
@@ -928,9 +1014,11 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"body": {},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal2_id}}",
-				"description": ""
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal2_id}}"
 			},
 			"response": []
 		},
@@ -977,8 +1065,7 @@
 					"mode": "raw",
 					"raw": "{\t\n\t\"id\": \"{{linkexternal2_secondauthor_id}}\"\n}"
 				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal2_id}}",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal2_id}}"
 			},
 			"response": []
 		},
@@ -1022,9 +1109,11 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"body": {},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal2_id}}",
-				"description": ""
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal2_id}}"
 			},
 			"response": []
 		},
@@ -1071,8 +1160,7 @@
 					"mode": "raw",
 					"raw": "{\n        \"id\": \"{{linkexternal2_author_id}}\"\n}"
 				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal2_id}}",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal2_id}}"
 			},
 			"response": []
 		},
@@ -1107,9 +1195,11 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"body": {},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal2_id}}",
-				"description": ""
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal2_id}}"
 			},
 			"response": []
 		},
@@ -1156,8 +1246,7 @@
 					"mode": "raw",
 					"raw": ""
 				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal2_id}}",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal2_id}}"
 			},
 			"response": []
 		},
@@ -1189,9 +1278,11 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"body": {},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal2_id}}",
-				"description": ""
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/linkexternal/{{linkexternal2_id}}"
 			},
 			"response": []
 		},
@@ -1234,8 +1325,7 @@
 					"mode": "raw",
 					"raw": "{\n    \"resource\": {\n        \"familyName\": [\n            \"{{author_family_name_1}}\"\n        ],\n        \"givenName\": [\n            \"{{author_given_name}}\"\n        ],\n        \"biography\": [\n            \"{{author_biography}}\"\n        ],\n        \"email\": [\n            \"{{author_email}}\"\n        ],\n        \"reference\": [\n            \"{{author_reference}}\"\n        ],\n        \"furtherInformation\": [\n        \t\"{{author_furtherInformation}}\"\n        ],\n        \"externalReference\": [\n        \t\"{{linkexternal_id}}\"\n        ]\n    },\n    \"label\": \"{{author_given_name}}\"\n}"
 				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/author",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/author"
 			},
 			"response": []
 		},
@@ -1280,9 +1370,11 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"body": {},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/author/{{author_id}}",
-				"description": ""
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/author/{{author_id}}"
 			},
 			"response": []
 		},
@@ -1329,8 +1421,7 @@
 					"mode": "raw",
 					"raw": "{\n\t\"id\": \"{{author_familyName_id}}\",\n\t\"value\": \"{{author_family_name_2}}\"\n}"
 				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/author/{{author_id}}",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/author/{{author_id}}"
 			},
 			"response": []
 		},
@@ -1367,9 +1458,11 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"body": {},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/author/{{author_id}}",
-				"description": ""
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/author/{{author_id}}"
 			},
 			"response": []
 		},
@@ -1420,8 +1513,7 @@
 					"mode": "raw",
 					"raw": "{\n    \"resource\": {\n        \"name\": [ \"{{notion1_name}}\" ],\n        \"definition\": [ \"{{notion1_definition}}\" ],\n        \"references\": [ \"{{notion1_references}}\" ],\n        \"author\": [ \"{{author_id}}\" ]\n    },\n    \"label\": \"{{notion1_name}}\"\n}"
 				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/notion",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/notion"
 			},
 			"response": []
 		},
@@ -1469,9 +1561,11 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"body": {},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/notion/{{notion1_id}}",
-				"description": ""
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/notion/{{notion1_id}}"
 			},
 			"response": []
 		},
@@ -1522,8 +1616,7 @@
 					"mode": "raw",
 					"raw": "{\n    \"resource\": {\n        \"name\": [ \"{{notion2_name}}\" ],\n        \"definition\": [ \"{{notion1_definition}}\" ],\n        \"parentNotion\": [ \"{{notion1_id}}\" ]\n    },\n    \"label\": \"{{notion2_name}}\"\n}"
 				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/notion",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/notion"
 			},
 			"response": []
 		},
@@ -1599,9 +1692,11 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"body": {},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/notion/{{notion2_id}}",
-				"description": ""
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/notion/{{notion2_id}}"
 			},
 			"response": []
 		},
@@ -1648,8 +1743,7 @@
 					"mode": "raw",
 					"raw": "{\n\t\"id\": \"{{notion2_parentNotion_id}}\",\n\t\"value\": \"{{notion2_id}}\"\n}"
 				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/notion/{{notion2_id}}",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/notion/{{notion2_id}}"
 			},
 			"response": []
 		},
@@ -1719,9 +1813,11 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"body": {},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/notion/{{notion2_id}}",
-				"description": ""
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/notion/{{notion2_id}}"
 			},
 			"response": []
 		},
@@ -1758,8 +1854,7 @@
 					"mode": "raw",
 					"raw": "{\n    \"resource\": {\n        \"url\": [ \"{{link_url}}\" ],\n        \"author\": [ \"{{author_id}}\" ]\n    },\n    \"label\": \"{{link_url}}\"\n}\n"
 				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/link",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/link"
 			},
 			"response": []
 		},
@@ -1793,9 +1888,11 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"body": {},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/institution/{{institution_id}}",
-				"description": ""
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/institution/{{institution_id}}"
 			},
 			"response": []
 		},
@@ -1845,8 +1942,7 @@
 					"mode": "raw",
 					"raw": "{\n    \"resource\": {\n        \"note\": [ \"{{collection_note}}\" ],\n        \"title\": [ \"{{collection_title}}\" ],\n        \"notion\": [ \"{{notion1_id}}\" ],\n        \"author\": [ \"{{author_id}}\"],\n        \"firstpublication\": [ \"GREGORIAN:{{collection_date}} CE\" ],\n        \"onlinepublication\": [ \"GREGORIAN:{{collection_date}} CE\" ]\n    },\n    \"label\": \"{{collection_note}}\"\n}"
 				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/collection",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/collection"
 			},
 			"response": []
 		},
@@ -1887,8 +1983,7 @@
 				"method": "GET",
 				"header": [],
 				"body": {},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/collection/{{collection_id}}",
-				"description": ""
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/collection/{{collection_id}}"
 			},
 			"response": []
 		}
