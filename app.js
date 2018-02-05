@@ -12,6 +12,7 @@ const HttpStatus = require('http-status-codes');
  ******************************************************************************/
 const search = require('./routes/search');
 const resources = require('./routes/resources');
+const lists = require('./routes/lists');
 const session = require('./routes/session');
 
 const app = express();
@@ -35,6 +36,7 @@ app.use(express.static(path.join(__dirname, 'public')));
  ******************************************************************************/
 app.use('/search', search);
 app.use('/resources', resources);
+app.use('/lists', lists);
 app.use('/session', session);
 
 // catch 404 and forward to error handler

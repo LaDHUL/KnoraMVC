@@ -16,6 +16,7 @@ const Util = require('./util');
 
 function Knora() {
 	this.resource_types = {};
+	this.list = {};
 	this.util = new Util();
 }
 
@@ -45,6 +46,103 @@ Knora.prototype.fixCookies = function (options, req) {
 		_.set(options, 'headers.cookie', cookies);
 	}
 	return cookies;
+};
+
+/**
+ * get the list values
+ *
+ * input: project model
+ * @param project
+ * @param model
+ */
+Knora.prototype.knora_lists = function (project, model) {
+	let options = {method: 'GET'};
+	let knora = this;
+
+	if (!knora.list[project]) {
+        knora.list[project] = {};
+    }
+
+	// format the input:
+	// hlist=<http://rdfh.ch/lists/0108/atelier-fabula-list-articleHasType>
+	// =>
+	// http://rdfh.ch/lists/0108/atelier-fabula-list-articleHasType
+	if (model.indexOf("hlist") === 0) {
+		model = model.substring(7,model.length-1)
+	}
+
+	// TODO: review this strange line of code
+	if (!model) {
+		return Promise.resolve(model);
+	}
+
+	if (knora.list[project][model]) {
+        return Promise.resolve(knora.list[model]);
+	} else {
+        knora.list[project][model] = {}
+	}
+
+	return new Promise(function (fullfill, reject) {
+		// check the cache : if we know the resource, return
+		logdebug('get list for model: %o', model);
+
+		// else request the information
+
+		options.url = knora.util.baseUrl + 'hlists/' + qs.escape(model);
+		// get the resource type
+		logdebug('restype: %o', options);
+		// TODO : split the callback function of the request per operations,
+		//        namely; get, create, search
+		request(options, function (error, response, body) {
+			if (error) {
+				// what kind of error is that?
+				logdebug('error: %o', error);
+				// TODO: rework the error description
+				reject(error);
+				return;
+			}
+
+			logdebug('response: %o', response.statusCode);
+			if (response.statusCode !== HttpStatus.OK) {
+				reject(Error(body));
+				return;
+			}
+
+			// map
+			let parsedBody = JSON.parse(body);
+			if (!parsedBody.hlist) {
+				// we did not find what we are looking for
+				reject(new Error("missing list info " + model));
+				return;
+			}
+
+			// walk through the returned values to store the properties' types
+			/* {
+				 "http://www.knora.org/ontology/0108#hasFamilyName" : {
+					"name": "http://www.knora.org/ontology/0108#hasFamilyName",
+					"guiorder": 1,
+					"description": "Nom.",
+					"valuetype_id": "http://www.knora.org/ontology/knora-base#TextValue",
+					"label": "Nom",
+					"vocabulary": "http://www.knora.org/ontology/0108",
+					"attributes": "maxlength=255;size=80",
+					"occurrence": "1",
+					"id": "http://www.knora.org/ontology/0108#hasFamilyName",
+					"gui_name": "text"
+				 },
+				 "http://www.knora.org/ontology/0108#hasGivenName" : { ... },
+				 ...
+			  }
+			*/
+			logdebug('list content: %o', parsedBody.hlist);
+			_.forEach(parsedBody.hlist, function (element) {
+				logdebug('adding list element: %o, %o', element.name, element);
+				knora.list[project][model][element.name] = element;
+
+			});
+			fullfill(knora.list[project][model])
+		});
+	});
 };
 
 /**
@@ -121,6 +219,13 @@ Knora.prototype.knora_restypes = function (model) {
 			_.forEach(parsedBody.restype_info.properties, function (element) {
 				logdebug('restype mapping: %o, %o', element.id, element);
 				restype[element.id] = element;
+
+				// if it is a list, query the possible values
+				if (element.gui_name === 'pulldown') {
+					let subrequest = knora.knora_lists(model, element.attributes);
+                    requests.push(subrequest);
+
+				}
 			});
 
 			// fill in the top type
@@ -768,6 +873,11 @@ Knora.prototype.api_request = function (options, req, res, model) {
 		});
 }
 ;
+
+/**
+ *
+ */
+
 
 /**
  * Login
