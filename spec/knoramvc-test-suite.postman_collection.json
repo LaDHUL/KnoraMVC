@@ -1,7 +1,7 @@
 {
 	"info": {
-		"name": "knoramvc-test-suite copy",
-		"_postman_id": "4fa5bdd8-14b9-d9ce-c6b8-71a67cfa0775",
+		"name": "knoramvc-test-suite",
+		"_postman_id": "1ef1d6ae-9b24-94bc-0780-5d7278e49244",
 		"description": "",
 		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
 	},
@@ -123,7 +123,10 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"body": {},
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/institution/{{institution_id}}"
 			},
 			"response": []
@@ -203,7 +206,10 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"body": {},
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/institution/{{institution_id}}"
 			},
 			"response": []
@@ -1822,81 +1828,6 @@
 			"response": []
 		},
 		{
-			"name": "create a link",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"type": "text/javascript",
-						"exec": [
-							"pm.test(\"Status code is 200\", function () {",
-							"    pm.response.to.have.status(200);",
-							"});",
-							"",
-							"pm.test(\"created resource\", function () {",
-							"    var jsonData = pm.response.json();",
-							"",
-							"    // sanity checks",
-							"    pm.expect(jsonData.status).to.eql(0);",
-							"    pm.expect(jsonData.id).to.exist;",
-							"    ",
-							"    // save id for later use",
-							"    postman.setEnvironmentVariable(\"institution_id\", jsonData.id);",
-							"});"
-						]
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"resource\": {\n        \"url\": [ \"{{link_url}}\" ],\n        \"author\": [ \"{{author_id}}\" ]\n    },\n    \"label\": \"{{link_url}}\"\n}\n"
-				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/link"
-			},
-			"response": []
-		},
-		{
-			"name": "get created link",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"type": "text/javascript",
-						"exec": [
-							"pm.test(\"Status code is 200\", function () {",
-							"    pm.response.to.have.status(200);",
-							"});",
-							"",
-							"pm.test(\"get expected resource\", function () {",
-							"    var jsonData = pm.response.json();",
-							"",
-							"    // sanity checks",
-							"    pm.expect(jsonData.status).to.eql(0);",
-							"",
-							"    // checking values",
-							"    pm.expect(jsonData.resource.id).to.eql(pm.environment.get(\"institution_id\"));",
-							"    pm.expect(jsonData.resource.name[0]).to.eql(pm.environment.get(\"institution_name\"));",
-							"    pm.expect(jsonData.resource.altname[0]).to.eql(pm.environment.get(\"institution_alt_name\"));",
-							"});"
-						]
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
-				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/institution/{{institution_id}}"
-			},
-			"response": []
-		},
-		{
 			"name": "create a collection",
 			"event": [
 				{
@@ -1984,6 +1915,224 @@
 				"header": [],
 				"body": {},
 				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/collection/{{collection_id}}"
+			},
+			"response": []
+		},
+		{
+			"name": "get list",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "e0fd6788-57cd-4cc1-8350-e3558392840c",
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"get expected resource\", function () {",
+							"    var jsonData = pm.response.json();",
+							"",
+							"    // sanity checks",
+							"    pm.expect(jsonData.length).to.eql(4);",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {},
+				"url": "https://{{server}}:{{port}}/lists/atelier-fabula/{{list_types}}"
+			},
+			"response": []
+		},
+		{
+			"name": "get another list",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "688f2d47-b9ab-4736-8c21-d9c51e3689ba",
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"get expected resource\", function () {",
+							"    var jsonData = pm.response.json();",
+							"",
+							"    // sanity checks",
+							"    pm.expect(jsonData.length).to.eql(2);",
+							"    pm.expect(jsonData.pop()).to.eql(\"unpublished\");",
+							"    pm.expect(jsonData.pop()).to.eql(\"published\");",
+							"",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {},
+				"url": "https://{{server}}:{{port}}/lists/atelier-fabula/{{list_status}}"
+			},
+			"response": []
+		},
+		{
+			"name": "create a minimal article",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "09562e07-3ccf-4304-9cd0-e010182fede0",
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"created resource\", function () {",
+							"    var jsonData = pm.response.json();",
+							"",
+							"    // sanity checks",
+							"    pm.expect(jsonData.status).to.eql(0);",
+							"    pm.expect(jsonData.id).to.exist;",
+							"    ",
+							"    // save id for later use",
+							"    postman.setEnvironmentVariable(\"article_id\", jsonData.id);",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": {
+						"username": "fabula@unil.ch",
+						"password": "c2B4",
+						"showPassword": false
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"resource\": {\n        \"title\": [ \"{{article_title}}\" ],\n        \"author\": [ \"{{author_id}}\"],\n        \"notions\": [ \"{{notion1_id}}\" ],\n        \"status\": [ \"published\" ]\n    },\n    \"label\": \"{{article_title}}\"\n}"
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/article"
+			},
+			"response": []
+		},
+		{
+			"name": "create a less minimal article",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "09562e07-3ccf-4304-9cd0-e010182fede0",
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"created resource\", function () {",
+							"    var jsonData = pm.response.json();",
+							"",
+							"    // sanity checks",
+							"    pm.expect(jsonData.status).to.eql(0);",
+							"    pm.expect(jsonData.id).to.exist;",
+							"    ",
+							"    // save id for later use",
+							"    postman.setEnvironmentVariable(\"article_id\", jsonData.id);",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": {
+						"username": "fabula@unil.ch",
+						"password": "c2B4",
+						"showPassword": false
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"resource\": {\n        \"title\": [ \"{{article_title}}\" ],\n        \"subtitle\": [ \"{{article_subtitle}}\" ],\n        \"author\": [ \"{{author_id}}\"],\n        \"affiliation\": [ \"{{institution_id}}\" ],\n        \"notions\": [ \"{{notion1_id}}\" ],\n        \"keywords\": [ \"{{notion1_id}}\" ],\n        \"status\": [ \"published\" ],\n        \"firstpublication\": [ \"GREGORIAN:{{collection_date}} CE\" ],\n        \"onlinepublication\": [ \"GREGORIAN:{{collection_date}} CE\" ],\n        \"collection\": [ \"{{collection_id}}\" ]\n    },\n    \"label\": \"{{article_title}}\"\n}"
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/article"
+			},
+			"response": []
+		},
+		{
+			"name": "create an article",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "09562e07-3ccf-4304-9cd0-e010182fede0",
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"created resource\", function () {",
+							"    var jsonData = pm.response.json();",
+							"",
+							"    // sanity checks",
+							"    pm.expect(jsonData.status).to.eql(0);",
+							"    pm.expect(jsonData.id).to.exist;",
+							"    ",
+							"    // save id for later use",
+							"    postman.setEnvironmentVariable(\"article_id\", jsonData.id);",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": {
+						"username": "fabula@unil.ch",
+						"password": "c2B4",
+						"showPassword": false
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"resource\": {\n        \"title\": [ \"{{article_title}}\" ],\n        \"subtitle\": [ \"{{article_subtitle}}\" ],\n        \"introduction\": [ \"{{article_introduction}}\" ],\n        \"author\": [ \"{{author_id}}\"],\n        \"bodytext\": [ \"{{article_bodytext}}\"],\n        \"references\": [ \"{{article_references}}\" ],\n        \"affiliation\": [ \"{{institution_id}}\" ],\n        \"notions\": [ \"{{notion1_id}}\" ],\n        \"keywords\": [ \"{{notion1_id}}\" ],\n        \"firstpublication\": [ \"GREGORIAN:{{collection_date}} CE\" ],\n        \"onlinepublication\": [ \"GREGORIAN:{{collection_date}} CE\" ],\n        \"collection\": [ \"{{collection_id}}\" ]\n    },\n    \"label\": \"{{article_title}}\"\n}"
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/article"
 			},
 			"response": []
 		}
