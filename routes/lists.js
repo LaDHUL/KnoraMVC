@@ -34,7 +34,7 @@ router.get('/:project/:name', function (req, res, next) {
 	logdebug('model: %o', model.model[req.params.name]);
 
     //knora.knora_request(options, req, res, model.model[req.params.name]);
-	knora.knora_lists(req.params.project, model.model[req.params.name])
+	knora.knora_lists(model.model[req.params.name])
 		.then(function(result) {
 
             // send result
