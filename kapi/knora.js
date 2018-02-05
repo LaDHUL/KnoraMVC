@@ -55,40 +55,36 @@ Knora.prototype.fixCookies = function (options, req) {
  * @param project
  * @param model
  */
-Knora.prototype.knora_lists = function (project, model) {
+Knora.prototype.knora_lists = function (listName) {
 	let options = {method: 'GET'};
 	let knora = this;
 
-	if (!knora.list[project]) {
-        knora.list[project] = {};
+    // TODO: review this strange line of code
+    if (!listName) {
+        return Promise.resolve(listName);
     }
 
 	// format the input:
 	// hlist=<http://rdfh.ch/lists/0108/atelier-fabula-list-articleHasType>
 	// =>
 	// http://rdfh.ch/lists/0108/atelier-fabula-list-articleHasType
-	if (model.indexOf("hlist") === 0) {
-		model = model.substring(7,model.length-1)
+	if (listName.indexOf("hlist") === 0) {
+		listName = listName.substring(7,listName.length-1)
 	}
 
-	// TODO: review this strange line of code
-	if (!model) {
-		return Promise.resolve(model);
-	}
-
-	if (knora.list[project][model]) {
-        return Promise.resolve(knora.list[model]);
+	if (knora.list[listName]) {
+        return Promise.resolve(knora.list[listName]);
 	} else {
-        knora.list[project][model] = {}
+        knora.list[listName] = {}
 	}
 
 	return new Promise(function (fullfill, reject) {
 		// check the cache : if we know the resource, return
-		logdebug('get list for model: %o', model);
+		logdebug('get list for listName: %o', listName);
 
 		// else request the information
 
-		options.url = knora.util.baseUrl + 'hlists/' + qs.escape(model);
+		options.url = knora.util.baseUrl + 'hlists/' + qs.escape(listName);
 		// get the resource type
 		logdebug('restype: %o', options);
 		// TODO : split the callback function of the request per operations,
@@ -112,7 +108,7 @@ Knora.prototype.knora_lists = function (project, model) {
 			let parsedBody = JSON.parse(body);
 			if (!parsedBody.hlist) {
 				// we did not find what we are looking for
-				reject(new Error("missing list info " + model));
+				reject(new Error("missing list info " + listName));
 				return;
 			}
 
@@ -137,10 +133,10 @@ Knora.prototype.knora_lists = function (project, model) {
 			logdebug('list content: %o', parsedBody.hlist);
 			_.forEach(parsedBody.hlist, function (element) {
 				logdebug('adding list element: %o, %o', element.name, element);
-				knora.list[project][model][element.name] = element;
+				knora.list[listName][element.name] = element;
 
 			});
-			fullfill(knora.list[project][model])
+			fullfill(knora.list[listName])
 		});
 	});
 };
@@ -215,6 +211,7 @@ Knora.prototype.knora_restypes = function (model) {
 			  }
 			*/
 			let restype = {};
+            let requests = [];
 			logdebug('restype properties: %o', parsedBody.restype_info.properties);
 			_.forEach(parsedBody.restype_info.properties, function (element) {
 				logdebug('restype mapping: %o, %o', element.id, element);
@@ -222,7 +219,7 @@ Knora.prototype.knora_restypes = function (model) {
 
 				// if it is a list, query the possible values
 				if (element.gui_name === 'pulldown') {
-					let subrequest = knora.knora_lists(model, element.attributes);
+					let subrequest = knora.knora_lists(element.attributes);
                     requests.push(subrequest);
 
 				}
@@ -233,7 +230,6 @@ Knora.prototype.knora_restypes = function (model) {
 
 			// walk through the model to check what property is a link
 			// that should be unfolded
-			let requests = [];
 			_.forEach(model.properties, function (value, key) {
 				if (_.isArray(value)) {
 					let subrequest = knora.knora_restypes(value[1]);
@@ -394,8 +390,18 @@ Knora.prototype.knora_request = function (args) {
 				} else {
                     let outValues = [];
                     _.forEach(values, function (value) {
-                        logdebug("value: %o", value);
-                        outValues.push(formatter(value, project, {}));
+                        logdebug("value: %o, %o", value, propertyName);
+                        if (valueTypeId && valueTypeId.endsWith("ListValue")) {
+                        	// if we have a list element, get the value, finds the iri
+                            //outValues.push(formatter(value, project, {}));
+							let list = knora.resource_types[model.id][propertyName].attributes;
+                            if (list.indexOf("hlist") === 0) {
+                                list = list.substring(7,list.length-1)
+                            }
+                            outValues.push({"hlist_value": knora.list[list][value].id});
+						} else {
+                            outValues.push(formatter(value, project, {}));
+						}
                     });
                     options.body.properties[propertyName] = outValues;
 				}
