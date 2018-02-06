@@ -17,6 +17,7 @@ const Util = require('./util');
 function Knora() {
 	this.resource_types = {};
 	this.list = {};
+	this.backlist = {}; // reverse lookup for list values
 	this.util = new Util();
 }
 
@@ -84,6 +85,7 @@ Knora.prototype.knora_lists = function (listName) {
 
 		// else request the information
 
+		// call http://localhost:3333/v1/hlists/http%3A%2F%2Frdfh.ch%2Flists%2F0108%2Fatelier-fabula-list-articleHasType
 		options.url = knora.util.baseUrl + 'hlists/' + qs.escape(listName);
 		// get the resource type
 		logdebug('restype: %o', options);
@@ -113,28 +115,30 @@ Knora.prototype.knora_lists = function (listName) {
 			}
 
 			// walk through the returned values to store the properties' types
-			/* {
-				 "http://www.knora.org/ontology/0108#hasFamilyName" : {
-					"name": "http://www.knora.org/ontology/0108#hasFamilyName",
-					"guiorder": 1,
-					"description": "Nom.",
-					"valuetype_id": "http://www.knora.org/ontology/knora-base#TextValue",
-					"label": "Nom",
-					"vocabulary": "http://www.knora.org/ontology/0108",
-					"attributes": "maxlength=255;size=80",
-					"occurrence": "1",
-					"id": "http://www.knora.org/ontology/0108#hasFamilyName",
-					"gui_name": "text"
-				 },
-				 "http://www.knora.org/ontology/0108#hasGivenName" : { ... },
-				 ...
-			  }
+			/*
+			{
+			  hlist: [
+			    {
+			      id: "http://rdfh.ch/lists/0108/atelier-fabula-list-articleHasType-extract",
+			      name: "extract",
+			      label: "extrait",
+			      level: 0
+			    },
+			    {
+			      id: "http://rdfh.ch/lists/0108/atelier-fabula-list-articleHasType-unpublished",
+			      name: "unpublished",
+			      label: "inédit",
+			      level: 0
+			    },
+			    ...
+			  ]
+			}
 			*/
 			logdebug('list content: %o', parsedBody.hlist);
 			_.forEach(parsedBody.hlist, function (element) {
 				logdebug('adding list element: %o, %o', element.name, element);
 				knora.list[listName][element.name] = element;
-
+				knora.backlist[element.id] = element.name;
 			});
 			fullfill(knora.list[listName])
 		});
@@ -503,6 +507,7 @@ Knora.prototype.knora_request = function (args) {
                 // get formatter
                 let propertyType; // text
                 let valueTypeId; // http://www.knora.org/ontology/0108#Author
+				let listName;
                 if (Array.isArray(propertyName)) {
                     // link data
                     propertyName = propertyName[0];
@@ -510,12 +515,18 @@ Knora.prototype.knora_request = function (args) {
                 } else {
                     propertyType = knora.resource_types[model.id][propertyName].gui_name;
                     valueTypeId = knora.resource_types[model.id][propertyName].valuetype_id;
+                    if (valueTypeId == "http://www.knora.org/ontology/knora-base#ListValue") {
+                    	listName = knora.resource_types[model.id][propertyName].attributes;
+                        if (listName.indexOf("hlist") === 0) {
+                            listName = listName.substring(7,listName.length-1)
+                        }
+					}
                 }
 
                 // format the output
                 let formatter = knora.util.knora_get_formatter(propertyType, valueTypeId);
                 let outValues = {};
-                formatter(data.value, project, outValues);
+                formatter(data.value, project, outValues, knora.list[listName]);
                 options.body = outValues;
 
                 // work out the iri
@@ -739,6 +750,15 @@ Knora.prototype.knora_request = function (args) {
                                     // req and res are the entry point (original) request and result, we keep them
                                     subrequests.push(knora.knora_request({options: linkedOptions, model: linkedModel, depth: (depth-1), project: project}));
                                     anchors.push({key:key, id: knora.util.shortIri(toReturn.props[value].value_ids[i])});
+                                }
+                                break;
+
+							case "http://www.knora.org/ontology/knora-base#ListValue":
+                                for (let i = 0; i < toReturn.props[value].values.length; i++) {
+                                    let item = toReturn.props[value].values[i];
+                                    let id = toReturn.props[value].value_ids[i];
+                                    let formatted = knora.backlist[item];
+                                    toReturn.resource[key].push({id: knora.util.shortIri(id), value: formatted});
                                 }
                                 break;
 
