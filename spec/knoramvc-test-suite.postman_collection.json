@@ -2035,6 +2035,97 @@
 			"response": []
 		},
 		{
+			"name": "get the newly created article",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "88636149-5146-403a-b078-28c4d4a0b0c7",
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"var jsonData = pm.response.json();",
+							"",
+							"pm.test(\"get expected resource\", function () {",
+							"",
+							"    // sanity checks",
+							"    pm.expect(jsonData.status).to.eql(0);",
+							"",
+							"    // checking values",
+							"    pm.expect(jsonData.resource.author.shift().value.id, 'author id').to.eql(pm.environment.get(\"author_id\"));",
+							"    var status = jsonData.resource.status.shift();",
+							"    pm.expect(status.value, 'status').to.eql(\"published\");",
+							"    ",
+							"    // save id for later use",
+							"    postman.setEnvironmentVariable(\"status_id\", status.id);",
+							"});",
+							""
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/article/{{article_id}}"
+			},
+			"response": []
+		},
+		{
+			"name": "modify status",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"updated resource\", function () {",
+							"    var jsonData = pm.response.json();",
+							"",
+							"    // sanity checks",
+							"    pm.expect(jsonData.status).to.eql(0);",
+							"    pm.expect(jsonData.id).to.exist;",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": {
+						"username": "fabula@unil.ch",
+						"password": "c2B4",
+						"showPassword": false
+					}
+				},
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"id\": \"{{status_id}}\",\n\t\"value\": \"unpublished\"\n}"
+				},
+				"url": "https://{{server}}:{{port}}/resources/atelier-fabula/article/{{article_id}}"
+			},
+			"response": []
+		},
+		{
 			"name": "create a less minimal article",
 			"event": [
 				{
