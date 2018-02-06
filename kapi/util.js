@@ -28,23 +28,23 @@ Util.prototype.knora_get_formatter = function (propertyType, valueTypeId) {
     switch (propertyType) {
         case 'text':
             if (valueTypeId.endsWith("UriValue")) {
-                return function (value, project, base) {
+                return function (value, project, base, lookup) {
                     base["uri_value"] = value;
                     return base;
                 };
             } else {
-                return function (value, project, base) {
+                return function (value, project, base, lookup) {
                     base["richtext_value"] = {"utf8str": value};
                     return base;
                 };
             }
         case 'link':
-            return function(value, project, base) {
+            return function(value, project, base, lookup) {
                 base["link_value"] = here.longIri(project, value);
                 return base;
             };
         case 'richtext':
-            return function(value, project, base) {
+            return function(value, project, base, lookup) {
                 let xmlified = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + value;
                 base["richtext_value"] = {
                     "xml": xmlified,
@@ -53,10 +53,15 @@ Util.prototype.knora_get_formatter = function (propertyType, valueTypeId) {
                 return base;
             };
         case 'date':
-            return function (value, project, base) {
+            return function (value, project, base, lookup) {
                 base["date_value"] = value;
                 return base;
             };
+        case 'pulldown':
+            return function (value, project, base, lookup) {
+                base["hlist_value"] = lookup[value].id;
+                return base;
+            }
 
     }
 };
